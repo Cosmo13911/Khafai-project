@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { Zap, Loader2, Calendar, X } from "lucide-react";
+import { KhafaiLogo } from "./KhafaiLogo";
 
 interface OnboardingModalProps {
   isOpen: boolean;
@@ -54,8 +55,8 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
 
         {/* Icon & Title Header */}
         <div className="relative z-10">
-          <div className="w-16 h-16 bg-blue-600 text-white rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg shadow-blue-200">
-            <Zap className="w-9 h-9 fill-current" />
+          <div className="w-16 h-16 mx-auto mb-5 flex items-center justify-center">
+            <KhafaiLogo className="w-16 h-16 drop-shadow-md" />
           </div>
 
           <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">

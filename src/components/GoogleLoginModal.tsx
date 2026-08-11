@@ -3,8 +3,8 @@
 import React, { useState } from "react";
 import { GoogleLogin } from "@react-oauth/google";
 import { useGoogleAuth } from "@/context/GoogleAuthContext";
+import { KhafaiLogo } from "./KhafaiLogo";
 import {
-  Zap,
   ShieldCheck,
   UserCheck,
   X,
@@ -63,8 +63,8 @@ export const GoogleLoginModal: React.FC<GoogleLoginModalProps> = ({ isOpen, onCl
         )}
 
         {/* Brand Icon Header */}
-        <div className="w-14 h-14 bg-blue-600 text-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg shadow-blue-200">
-          <Zap className="w-8 h-8 fill-current" />
+        <div className="w-16 h-16 mx-auto mb-3 flex items-center justify-center">
+          <KhafaiLogo className="w-16 h-16 drop-shadow-md" />
         </div>
 
         <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">

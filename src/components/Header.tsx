@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Zap, ShieldCheck, Settings, RefreshCw, LogIn, LogOut, ChevronDown, FlaskConical } from "lucide-react";
+import { ShieldCheck, Settings, RefreshCw, LogIn, LogOut, ChevronDown, FlaskConical } from "lucide-react";
 import { UserProfile } from "@/types";
 import { useGoogleAuth } from "@/context/GoogleAuthContext";
+import { KhafaiLogo } from "./KhafaiLogo";
 
 interface HeaderProps {
   user: UserProfile;
@@ -40,8 +41,8 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-4">
         {/* Brand Logo & Title */}
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-200">
-            <Zap className="w-6 h-6 fill-current text-white" />
+          <div className="w-10 h-10 flex items-center justify-center">
+            <KhafaiLogo className="w-10 h-10 drop-shadow-sm" />
           </div>
           <div>
             <div className="flex items-center space-x-2">
