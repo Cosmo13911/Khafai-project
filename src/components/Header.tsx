@@ -1,13 +1,14 @@
 "use client";
 
 import React, { useState } from "react";
-import { Zap, ShieldCheck, Settings, RefreshCw, LogIn, LogOut, ChevronDown } from "lucide-react";
+import { Zap, ShieldCheck, Settings, RefreshCw, LogIn, LogOut, ChevronDown, FlaskConical } from "lucide-react";
 import { UserProfile } from "@/types";
 import { useGoogleAuth } from "@/context/GoogleAuthContext";
 
 interface HeaderProps {
   user: UserProfile;
   onOpenTariffModal: () => void;
+  onOpenTestApiModal: () => void;
   onResetData: () => void;
   onOpenGoogleLoginModal: () => void;
   isLoading: boolean;
@@ -16,6 +17,7 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   user,
   onOpenTariffModal,
+  onOpenTestApiModal,
   onResetData,
   onOpenGoogleLoginModal,
   isLoading,
@@ -51,6 +53,16 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* User Status & Action Controls */}
         <div className="flex items-center flex-wrap gap-2.5">
+          {/* Test API Button */}
+          <button
+            onClick={onOpenTestApiModal}
+            className="flex items-center space-x-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 text-xs font-bold px-3 py-2 rounded-lg transition-colors cursor-pointer min-h-[44px]"
+            title="ทดสอบยิงข้อมูลจำลอง API"
+          >
+            <FlaskConical className="w-4 h-4 text-purple-600" />
+            <span>ทดสอบยิง API</span>
+          </button>
+
           {/* Current Tariff Rate Button */}
           <button
             onClick={onOpenTariffModal}

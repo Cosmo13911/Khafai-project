@@ -13,7 +13,7 @@ import {
   checkDeleteProtection,
 } from "@/lib/khafai-engine";
 import { callGasApi } from "@/lib/gas-client";
-import { MeterLog } from "@/types";
+import { MeterLog, UserProfile } from "@/types";
 
 export async function PUT(
   req: NextRequest,
@@ -65,6 +65,7 @@ export async function PUT(
     // Call live GAS API
     const gasResponse = await callGasApi<{
       success: boolean;
+      user?: UserProfile;
       logs?: MeterLog[];
       message?: string;
     }>("updateMeterLog", userId, {
@@ -77,17 +78,21 @@ export async function PUT(
 
     const updated = updateMeterLog(userId, logId, body);
     let updatedLogs = getMeterLogs(userId);
+    let updatedUser = getUserProfile(userId);
 
     if (gasResponse && gasResponse.success && gasResponse.logs) {
       updatedLogs = gasResponse.logs;
+      if (gasResponse.user) {
+        updatedUser = gasResponse.user;
+      }
     }
 
-    const user = getUserProfile(userId);
-    const summary = calculateSummaryData(updatedLogs, user.Current_Rate_Per_Unit);
+    const summary = calculateSummaryData(updatedLogs, updatedUser.Current_Rate_Per_Unit);
     const monthlyChart = calculateMonthlyChartData(updatedLogs);
 
     return NextResponse.json({
       success: true,
+      user: updatedUser,
       log: updated,
       logs: updatedLogs,
       summary,
@@ -144,6 +149,7 @@ export async function DELETE(
     // Call live GAS API
     const gasResponse = await callGasApi<{
       success: boolean;
+      user?: UserProfile;
       logs?: MeterLog[];
       message?: string;
     }>("deleteMeterLog", userId, {
@@ -154,16 +160,21 @@ export async function DELETE(
     deleteMeterLog(userId, logId);
 
     let updatedLogs = getMeterLogs(userId);
+    let updatedUser = getUserProfile(userId);
+
     if (gasResponse && gasResponse.success && gasResponse.logs) {
       updatedLogs = gasResponse.logs;
+      if (gasResponse.user) {
+        updatedUser = gasResponse.user;
+      }
     }
 
-    const user = getUserProfile(userId);
-    const summary = calculateSummaryData(updatedLogs, user.Current_Rate_Per_Unit);
+    const summary = calculateSummaryData(updatedLogs, updatedUser.Current_Rate_Per_Unit);
     const monthlyChart = calculateMonthlyChartData(updatedLogs);
 
     return NextResponse.json({
       success: true,
+      user: updatedUser,
       logs: updatedLogs,
       summary,
       monthlyChart,

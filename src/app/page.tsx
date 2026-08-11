@@ -13,6 +13,7 @@ import { TariffUpdateModal } from "@/components/TariffUpdateModal";
 import { DeleteProtectionModal } from "@/components/DeleteProtectionModal";
 import { OnboardingModal } from "@/components/OnboardingModal";
 import { GoogleLoginModal } from "@/components/GoogleLoginModal";
+import { TestApiModal } from "@/components/TestApiModal";
 import { RateLimitLockedState } from "@/components/RateLimitLockedState";
 import { ToastNotification, ToastMessage } from "@/components/ToastNotification";
 import { exportToCSV, exportToPDF } from "@/lib/pdf-export";
@@ -43,6 +44,7 @@ function KhafaiDashboardContent() {
 
   const [isOnboardingOpen, setIsOnboardingOpen] = useState<boolean>(false);
   const [isGoogleLoginOpen, setIsGoogleLoginOpen] = useState<boolean>(false);
+  const [isTestApiOpen, setIsTestApiOpen] = useState<boolean>(false);
 
   const addToast = (type: "warning" | "success" | "error", message: string, title?: string) => {
     const id = `toast-${Date.now()}-${Math.random()}`;
@@ -70,7 +72,7 @@ function KhafaiDashboardContent() {
       }
 
       if (data.success) {
-        setUser(data.user);
+        if (data.user) setUser(data.user);
         setLogs(data.logs);
         setSummary(data.summary);
         setMonthlyChart(data.monthlyChart);
@@ -116,7 +118,7 @@ function KhafaiDashboardContent() {
       if (data.rateLimit) setRateLimit(data.rateLimit);
 
       if (data.success) {
-        setUser(data.user);
+        if (data.user) setUser(data.user);
         setLogs(data.logs);
         setSummary(data.summary);
         setMonthlyChart(data.monthlyChart);
@@ -162,6 +164,7 @@ function KhafaiDashboardContent() {
       }
 
       if (data.success) {
+        if (data.user) setUser(data.user);
         setLogs(data.logs);
         setSummary(data.summary);
         setMonthlyChart(data.monthlyChart);
@@ -195,7 +198,7 @@ function KhafaiDashboardContent() {
       if (data.rateLimit) setRateLimit(data.rateLimit);
 
       if (data.success) {
-        setUser(data.user);
+        if (data.user) setUser(data.user);
         await fetchData(currentUserId);
         addToast("success", `ปรับเปลี่ยนอัตราค่าไฟเป็น ฿${newRate.toFixed(2)} /หน่วย และคำนวณย้อนหลังเรียบร้อยแล้ว`);
       } else {
@@ -233,6 +236,7 @@ function KhafaiDashboardContent() {
       if (data.rateLimit) setRateLimit(data.rateLimit);
 
       if (data.success) {
+        if (data.user) setUser(data.user);
         setLogs(data.logs);
         setSummary(data.summary);
         setMonthlyChart(data.monthlyChart);
@@ -304,6 +308,7 @@ function KhafaiDashboardContent() {
       <Header
         user={user}
         onOpenTariffModal={() => setIsTariffModalOpen(true)}
+        onOpenTestApiModal={() => setIsTestApiOpen(true)}
         onResetData={handleResetDemo}
         onOpenGoogleLoginModal={() => setIsGoogleLoginOpen(true)}
         isLoading={isLoading}
@@ -348,6 +353,14 @@ function KhafaiDashboardContent() {
           </div>
         </div>
       </main>
+
+      {/* Test API Modal */}
+      <TestApiModal
+        isOpen={isTestApiOpen}
+        onClose={() => setIsTestApiOpen(false)}
+        user={user}
+        onRefreshDashboard={() => fetchData(currentUserId)}
+      />
 
       {/* Google Login Modal */}
       <GoogleLoginModal

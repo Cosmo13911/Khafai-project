@@ -92,6 +92,7 @@ export async function POST(req: NextRequest) {
     // Call live GAS API
     const gasResponse = await callGasApi<{
       success: boolean;
+      user?: UserProfile;
       logs?: MeterLog[];
       message?: string;
     }>("createMeterLog", userId, {
@@ -107,16 +108,21 @@ export async function POST(req: NextRequest) {
     });
 
     let updatedLogs = getMeterLogs(userId);
+    let updatedUser = getUserProfile(userId);
+
     if (gasResponse && gasResponse.success && gasResponse.logs) {
       updatedLogs = gasResponse.logs;
+      if (gasResponse.user) {
+        updatedUser = gasResponse.user;
+      }
     }
 
-    const user = getUserProfile(userId);
-    const summary = calculateSummaryData(updatedLogs, user.Current_Rate_Per_Unit);
+    const summary = calculateSummaryData(updatedLogs, updatedUser.Current_Rate_Per_Unit);
     const monthlyChart = calculateMonthlyChartData(updatedLogs);
 
     return NextResponse.json({
       success: true,
+      user: updatedUser, // Return updated user profile to prevent UI from setting user to undefined!
       log: created,
       logs: updatedLogs,
       summary,
