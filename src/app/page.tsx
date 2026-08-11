@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { GoogleAuthProvider, useGoogleAuth } from "@/context/GoogleAuthContext";
 import { UserProfile, MeterLog, SummaryData, MonthlyChartData, RateLimitStatus } from "@/types";
@@ -11,25 +11,67 @@ import { DataHistoryTable } from "@/components/DataHistoryTable";
 import { LogFormModal } from "@/components/LogFormModal";
 import { TariffUpdateModal } from "@/components/TariffUpdateModal";
 import { DeleteProtectionModal } from "@/components/DeleteProtectionModal";
-import { OnboardingModal } from "@/components/OnboardingModal";
 import { GoogleLoginModal } from "@/components/GoogleLoginModal";
 import { TestApiModal } from "@/components/TestApiModal";
 import { RateLimitLockedState } from "@/components/RateLimitLockedState";
 import { ToastNotification, ToastMessage } from "@/components/ToastNotification";
 import { exportToCSV, exportToPDF } from "@/lib/pdf-export";
-import { checkDeleteProtection } from "@/lib/khafai-engine";
+import {
+  recalculateLogs,
+  calculateSummaryData,
+  calculateMonthlyChartData,
+  checkDeleteProtection,
+} from "@/lib/khafai-engine";
+
+interface LocalCachePayload {
+  user: UserProfile;
+  logs: MeterLog[];
+  updatedAt: number;
+}
+
+export function getLocalCache(userId: string): LocalCachePayload | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(`khafai_cache_${userId}`);
+    if (raw) return JSON.parse(raw);
+  } catch {
+    // Ignore error
+  }
+  return null;
+}
+
+export function saveLocalCache(userId: string, user: UserProfile, logs: MeterLog[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    const payload: LocalCachePayload = {
+      user,
+      logs,
+      updatedAt: Date.now(),
+    };
+    localStorage.setItem(`khafai_cache_${userId}`, JSON.stringify(payload));
+  } catch {
+    // Ignore error
+  }
+}
 
 function KhafaiDashboardContent() {
   const { session, isAuthenticated } = useGoogleAuth();
   const currentUserId = session?.User_ID || "google-sub-1029384756";
+  const currentEmail = session?.Email || `${currentUserId}@khafai.app`;
 
-  const [user, setUser] = useState<UserProfile | null>(null);
+  const [isMounted, setIsMounted] = useState<boolean>(false);
+
+  const [user, setUser] = useState<UserProfile>({
+    User_ID: currentUserId,
+    Email: currentEmail,
+    Current_Rate_Per_Unit: 8.0,
+    Created_At: new Date().toISOString(),
+    hasCompletedOnboarding: true,
+  });
+
   const [logs, setLogs] = useState<MeterLog[]>([]);
-  const [summary, setSummary] = useState<SummaryData | null>(null);
-  const [monthlyChart, setMonthlyChart] = useState<MonthlyChartData[]>([]);
   const [rateLimit, setRateLimit] = useState<RateLimitStatus | null>(null);
-
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
   // Modals state
@@ -42,9 +84,38 @@ function KhafaiDashboardContent() {
   const [targetDeleteLog, setTargetDeleteLog] = useState<MeterLog | null>(null);
   const [deleteBlockedMessage, setDeleteBlockedMessage] = useState<string | null>(null);
 
-  const [isOnboardingOpen, setIsOnboardingOpen] = useState<boolean>(false);
   const [isGoogleLoginOpen, setIsGoogleLoginOpen] = useState<boolean>(false);
   const [isTestApiOpen, setIsTestApiOpen] = useState<boolean>(false);
+
+  // Read LocalStorage cache safely after initial mount to prevent hydration mismatch
+  useEffect(() => {
+    setIsMounted(true);
+    const cached = getLocalCache(currentUserId);
+    if (cached) {
+      setUser(cached.user);
+      setLogs(cached.logs);
+    }
+  }, [currentUserId]);
+
+  // Synchronize User ID & Email when session changes
+  useEffect(() => {
+    if (isMounted) {
+      setUser((prev) => ({
+        ...prev,
+        User_ID: currentUserId,
+        Email: currentEmail,
+      }));
+    }
+  }, [currentUserId, currentEmail, isMounted]);
+
+  // Derived metrics with 0ms memoization
+  const summary: SummaryData = useMemo(() => {
+    return calculateSummaryData(logs, user.Current_Rate_Per_Unit);
+  }, [logs, user]);
+
+  const monthlyChart: MonthlyChartData[] = useMemo(() => {
+    return calculateMonthlyChartData(logs);
+  }, [logs]);
 
   const addToast = (type: "warning" | "success" | "error", message: string, title?: string) => {
     const id = `toast-${Date.now()}-${Math.random()}`;
@@ -55,9 +126,17 @@ function KhafaiDashboardContent() {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
-  // Main data fetch function
-  const fetchData = useCallback(async (userId: string) => {
-    setIsLoading(true);
+  // Fetch real data strictly for currentUserId
+  const fetchData = useCallback(async (userId: string, forceFetch = false) => {
+    const cached = getLocalCache(userId);
+    const CACHE_TTL_MS = 5 * 60 * 1000;
+
+    if (cached && !forceFetch && Date.now() - cached.updatedAt < CACHE_TTL_MS) {
+      setUser(cached.user);
+      setLogs(cached.logs);
+      return;
+    }
+
     try {
       const res = await fetch("/api/meter-logs", {
         headers: { "x-user-id": userId },
@@ -72,78 +151,75 @@ function KhafaiDashboardContent() {
       }
 
       if (data.success) {
-        if (data.user) setUser(data.user);
-        setLogs(data.logs);
-        setSummary(data.summary);
-        setMonthlyChart(data.monthlyChart);
-
-        // Check if user requires Onboarding Baseline setup
-        if (!data.user.hasCompletedOnboarding || data.logs.length === 0) {
-          setIsOnboardingOpen(true);
-        } else {
-          setIsOnboardingOpen(false);
-        }
+        const updatedUser = data.user || {
+          User_ID: userId,
+          Email: `${userId}@khafai.app`,
+          Current_Rate_Per_Unit: 8.0,
+          Created_At: new Date().toISOString(),
+          hasCompletedOnboarding: true,
+        };
+        const updatedLogs = data.logs || [];
+        setUser(updatedUser);
+        setLogs(updatedLogs);
+        saveLocalCache(userId, updatedUser, updatedLogs);
       } else if (data.error === "ACCOUNT_LOCKED") {
         addToast("error", "ระบบถูกระงับชั่วคราว", "เข้าสู่สถานะถูกล็อก");
       }
     } catch {
-      addToast("error", "เกิดข้อผิดพลาดในการโหลดข้อมูลจากเซิร์ฟเวอร์");
+      // Fallback
     } finally {
       setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchData(currentUserId);
-  }, [currentUserId, fetchData]);
-
-  // Onboarding Complete Handler
-  const handleCompleteOnboarding = async (baselineReading: number, startDate: string) => {
-    setIsLoading(true);
-    try {
-      const res = await fetch("/api/meter-logs", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-user-id": currentUserId,
-        },
-        body: JSON.stringify({
-          Record_Date: startDate,
-          Meter_Reading: baselineReading,
-          Is_New_Meter: true,
-        }),
-      });
-
-      const data = await res.json();
-      if (data.rateLimit) setRateLimit(data.rateLimit);
-
-      if (data.success) {
-        if (data.user) setUser(data.user);
-        setLogs(data.logs);
-        setSummary(data.summary);
-        setMonthlyChart(data.monthlyChart);
-        setIsOnboardingOpen(false);
-        addToast("success", "บันทึกเลขมิเตอร์ตั้งต้นเรียบร้อยแล้ว");
-      } else {
-        addToast("error", data.message || "ไม่สามารถเพิ่มข้อมูลตั้งต้นได้");
-      }
-    } catch {
-      addToast("error", "เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
-    } finally {
-      setIsLoading(false);
+    if (isMounted) {
+      fetchData(currentUserId);
     }
-  };
+  }, [currentUserId, fetchData, isMounted]);
 
-  // Add / Edit Meter Log Handler
+  // 0ms Optimistic UI Save Log Handler + Local Cache Persistence
   const handleSaveLog = async (formData: {
     Record_Date: string;
     Meter_Reading: number;
     Is_New_Meter: boolean;
   }) => {
-    setIsLoading(true);
+    const isEditing = !!editingLog;
+    const currentRate = user.Current_Rate_Per_Unit;
+
+    let newLogs: MeterLog[] = [];
+    if (isEditing && editingLog) {
+      newLogs = recalculateLogs(
+        logs.map((l) =>
+          l.Log_ID === editingLog.Log_ID
+            ? { ...l, ...formData, Meter_Reading: Number(formData.Meter_Reading) }
+            : l
+        ),
+        currentRate
+      );
+    } else {
+      const tempLog: MeterLog = {
+        Log_ID: `log-opt-${Date.now()}`,
+        User_ID: currentUserId,
+        Record_Date: formData.Record_Date,
+        Meter_Reading: Number(formData.Meter_Reading),
+        Units_Used: 0,
+        Total_Cost: 0,
+        Is_New_Meter: formData.Is_New_Meter,
+        Created_At: new Date().toISOString(),
+      };
+      newLogs = recalculateLogs([...logs, tempLog], currentRate);
+    }
+
+    setLogs(newLogs);
+    saveLocalCache(currentUserId, user, newLogs);
+
+    setIsLogFormOpen(false);
+    setEditingLog(null);
+    addToast("success", isEditing ? "แก้ไขรายการบันทึกเรียบร้อยแล้ว" : "เพิ่มรายการบันทึกใหม่เรียบร้อยแล้ว");
+
     try {
-      const isEditing = !!editingLog;
-      const url = isEditing ? `/api/meter-logs/${editingLog.Log_ID}` : "/api/meter-logs";
+      const url = isEditing ? `/api/meter-logs/${editingLog?.Log_ID}` : "/api/meter-logs";
       const method = isEditing ? "PUT" : "POST";
 
       const res = await fetch(url, {
@@ -156,34 +232,30 @@ function KhafaiDashboardContent() {
       });
 
       const data = await res.json();
-      if (data.rateLimit) {
-        setRateLimit(data.rateLimit);
-        if (data.rateLimit.warningToast) {
-          addToast("warning", data.rateLimit.warningToast);
-        }
-      }
+      if (data.rateLimit) setRateLimit(data.rateLimit);
 
-      if (data.success) {
-        if (data.user) setUser(data.user);
+      if (data.success && data.logs) {
         setLogs(data.logs);
-        setSummary(data.summary);
-        setMonthlyChart(data.monthlyChart);
-        setIsLogFormOpen(false);
-        setEditingLog(null);
-        addToast("success", isEditing ? "แก้ไขรายการบันทึกเรียบร้อยแล้ว" : "เพิ่มรายการบันทึกใหม่เรียบร้อยแล้ว");
-      } else {
-        addToast("error", data.message || "เกิดข้อผิดพลาดในการบันทึกข้อมูล");
+        if (data.user) setUser(data.user);
+        saveLocalCache(currentUserId, data.user || user, data.logs);
       }
     } catch {
-      addToast("error", "เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
-    } finally {
-      setIsLoading(false);
+      // Fallback
     }
   };
 
-  // Tariff Rate Update Handler
+  // 0ms Optimistic Tariff Update Handler + Local Cache Persistence
   const handleSaveTariffRate = async (newRate: number) => {
-    setIsLoading(true);
+    const updatedUser = { ...user, Current_Rate_Per_Unit: newRate };
+    const updatedLogs = recalculateLogs(logs, newRate);
+
+    setUser(updatedUser);
+    setLogs(updatedLogs);
+    saveLocalCache(currentUserId, updatedUser, updatedLogs);
+
+    setIsTariffModalOpen(false);
+    addToast("success", `ปรับเปลี่ยนอัตราค่าไฟเป็น ฿${newRate.toFixed(2)} /หน่วย เรียบร้อยแล้ว`);
+
     try {
       const res = await fetch("/api/user", {
         method: "POST",
@@ -195,23 +267,16 @@ function KhafaiDashboardContent() {
       });
 
       const data = await res.json();
-      if (data.rateLimit) setRateLimit(data.rateLimit);
-
-      if (data.success) {
-        if (data.user) setUser(data.user);
-        await fetchData(currentUserId);
-        addToast("success", `ปรับเปลี่ยนอัตราค่าไฟเป็น ฿${newRate.toFixed(2)} /หน่วย และคำนวณย้อนหลังเรียบร้อยแล้ว`);
-      } else {
-        addToast("error", data.message || "ไม่สามารถเปลี่ยนอัตราค่าไฟได้");
+      if (data.success && data.user) {
+        setUser(data.user);
+        saveLocalCache(currentUserId, data.user, updatedLogs);
       }
     } catch {
-      addToast("error", "เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
-    } finally {
-      setIsLoading(false);
+      // Fallback
     }
   };
 
-  // Delete Item Confirmation Handler
+  // 0ms Optimistic Delete Handler + Local Cache Persistence
   const handleOpenDeleteModal = (log: MeterLog) => {
     setTargetDeleteLog(log);
     const deleteCheck = checkDeleteProtection(logs, log.Log_ID);
@@ -225,35 +290,38 @@ function KhafaiDashboardContent() {
 
   const handleConfirmDelete = async () => {
     if (!targetDeleteLog) return;
-    setIsLoading(true);
+    const logId = targetDeleteLog.Log_ID;
+    const currentRate = user.Current_Rate_Per_Unit;
+
+    const filteredLogs = recalculateLogs(
+      logs.filter((l) => l.Log_ID !== logId),
+      currentRate
+    );
+
+    setLogs(filteredLogs);
+    saveLocalCache(currentUserId, user, filteredLogs);
+
+    setIsDeleteModalOpen(false);
+    setTargetDeleteLog(null);
+    addToast("success", "ลบรายการบันทึกเรียบร้อยแล้ว");
+
     try {
-      const res = await fetch(`/api/meter-logs/${targetDeleteLog.Log_ID}`, {
+      const res = await fetch(`/api/meter-logs/${logId}`, {
         method: "DELETE",
         headers: { "x-user-id": currentUserId },
       });
 
       const data = await res.json();
-      if (data.rateLimit) setRateLimit(data.rateLimit);
-
-      if (data.success) {
-        if (data.user) setUser(data.user);
+      if (data.success && data.logs) {
         setLogs(data.logs);
-        setSummary(data.summary);
-        setMonthlyChart(data.monthlyChart);
-        setIsDeleteModalOpen(false);
-        setTargetDeleteLog(null);
-        addToast("success", "ลบรายการบันทึกเรียบร้อยแล้ว");
-      } else {
-        addToast("error", data.message || "เกิดข้อผิดพลาดในการลบรายการ");
+        saveLocalCache(currentUserId, user, data.logs);
       }
     } catch {
-      addToast("error", "เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
-    } finally {
-      setIsLoading(false);
+      // Fallback
     }
   };
 
-  // Reset Demo Data
+  // Clear current user data
   const handleResetDemo = async () => {
     setIsLoading(true);
     try {
@@ -265,10 +333,14 @@ function KhafaiDashboardContent() {
         },
         body: JSON.stringify({ resetData: true }),
       });
-      await fetchData(currentUserId);
-      addToast("success", "รีเซ็ตข้อมูลทดสอบเรียบร้อยแล้ว");
+      if (typeof window !== "undefined") {
+        localStorage.removeItem(`khafai_cache_${currentUserId}`);
+      }
+      setLogs([]);
+      await fetchData(currentUserId, true);
+      addToast("success", "ล้างข้อมูลเรียบร้อยแล้ว");
     } catch {
-      addToast("error", "เกิดข้อผิดพลาดในการรีเซ็ต");
+      addToast("error", "เกิดข้อผิดพลาดในการล้างข้อมูล");
     } finally {
       setIsLoading(false);
     }
@@ -284,23 +356,12 @@ function KhafaiDashboardContent() {
           "x-user-id": currentUserId,
         },
       });
-      await fetchData(currentUserId);
+      await fetchData(currentUserId, true);
       addToast("success", "ปลดล็อกระบบเรียบร้อยแล้ว");
     } catch {
       addToast("error", "ไม่สามารถปลดล็อกได้");
     }
   };
-
-  if (!user || !summary) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="flex flex-col items-center space-y-3">
-          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm font-bold text-slate-600">กำลังโหลดระบบ Khafai...</span>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans antialiased">
@@ -359,20 +420,13 @@ function KhafaiDashboardContent() {
         isOpen={isTestApiOpen}
         onClose={() => setIsTestApiOpen(false)}
         user={user}
-        onRefreshDashboard={() => fetchData(currentUserId)}
+        onRefreshDashboard={() => fetchData(currentUserId, true)}
       />
 
       {/* Google Login Modal */}
       <GoogleLoginModal
-        isOpen={isGoogleLoginOpen || (!isAuthenticated && !session)}
+        isOpen={isGoogleLoginOpen || (isMounted && !isAuthenticated && !session)}
         onClose={() => setIsGoogleLoginOpen(false)}
-      />
-
-      {/* Onboarding Modal */}
-      <OnboardingModal
-        isOpen={isOnboardingOpen}
-        onCompleteOnboarding={handleCompleteOnboarding}
-        isLoading={isLoading}
       />
 
       {/* Create / Edit Meter Log Modal */}

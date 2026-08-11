@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Zap, ShieldCheck, Settings, RefreshCw, LogIn, LogOut, ChevronDown, FlaskConical } from "lucide-react";
 import { UserProfile } from "@/types";
 import { useGoogleAuth } from "@/context/GoogleAuthContext";
@@ -24,9 +24,16 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const { session, logout } = useGoogleAuth();
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
+  const [isMounted, setIsMounted] = useState<boolean>(false);
 
-  const displayName = session?.Name || user.Email.split("@")[0];
-  const displayEmail = session?.Email || user.Email;
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  const rawName = (isMounted && session?.Name) || user.Email.split("@")[0] || "User";
+  const displayName = rawName;
+  const displayEmail = (isMounted && session?.Email) || user.Email;
+  const avatarChar = displayName.charAt(0).toUpperCase();
 
   return (
     <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
@@ -85,7 +92,7 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
               className="flex items-center space-x-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl p-1.5 pr-2.5 transition-colors cursor-pointer min-h-[44px]"
             >
-              {session?.Picture ? (
+              {isMounted && session?.Picture ? (
                 // eslint-disable-next-next-line @next/next/no-img-element
                 <img
                   src={session.Picture}
@@ -93,13 +100,20 @@ export const Header: React.FC<HeaderProps> = ({
                   className="w-7 h-7 rounded-full object-cover border border-slate-300"
                 />
               ) : (
-                <div className="w-7 h-7 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-xs">
-                  {displayName.charAt(0).toUpperCase()}
+                <div
+                  suppressHydrationWarning
+                  className="w-7 h-7 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-xs"
+                >
+                  {avatarChar}
                 </div>
               )}
               <div className="text-left hidden sm:block">
-                <p className="text-xs font-bold text-slate-900 leading-none">{displayName}</p>
-                <p className="text-[10px] text-slate-500 max-w-[130px] truncate">{displayEmail}</p>
+                <p suppressHydrationWarning className="text-xs font-bold text-slate-900 leading-none">
+                  {displayName}
+                </p>
+                <p suppressHydrationWarning className="text-[10px] text-slate-500 max-w-[130px] truncate">
+                  {displayEmail}
+                </p>
               </div>
               <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
             </button>

@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { memo } from "react";
 import { TrendingUp, TrendingDown, Zap, Banknote, Layers } from "lucide-react";
 import { SummaryData } from "@/types";
 
@@ -8,7 +8,7 @@ interface SummaryCardsProps {
   summary: SummaryData;
 }
 
-export const SummaryCards: React.FC<SummaryCardsProps> = ({ summary }) => {
+export const SummaryCards: React.FC<SummaryCardsProps> = memo(({ summary }) => {
   const isUnitsUp = summary.unitsPercentChange !== null && summary.unitsPercentChange > 0;
   const isCostUp = summary.costPercentChange !== null && summary.costPercentChange > 0;
 
@@ -17,7 +17,7 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({ summary }) => {
       {/* Card 1: Monthly Units Consumed */}
       <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex flex-col justify-between transition-all hover:shadow-md">
         <div className="flex items-center justify-between mb-3">
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+          <span suppressHydrationWarning className="text-xs font-semibold uppercase tracking-wider text-slate-500">
             ยอดใช้ไฟเดือนนี้ ({summary.currentMonthName})
           </span>
           <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
@@ -27,7 +27,7 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({ summary }) => {
 
         <div>
           <div className="flex items-baseline space-x-2">
-            <span className="text-3xl font-extrabold text-slate-900 tracking-tight">
+            <span suppressHydrationWarning className="text-3xl font-extrabold text-slate-900 tracking-tight">
               {summary.currentMonthUnits.toLocaleString()}
             </span>
             <span className="text-sm font-semibold text-slate-500">หน่วย (kWh)</span>
@@ -36,6 +36,7 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({ summary }) => {
           <div className="mt-3 flex items-center text-xs">
             {summary.unitsPercentChange !== null ? (
               <span
+                suppressHydrationWarning
                 className={`flex items-center font-bold px-2 py-0.5 rounded-full ${
                   isUnitsUp
                     ? "bg-rose-50 text-rose-600 border border-rose-100"
@@ -71,7 +72,7 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({ summary }) => {
         <div>
           <div className="flex items-baseline space-x-1">
             <span className="text-sm font-bold text-slate-600">฿</span>
-            <span className="text-3xl font-extrabold text-slate-900 tracking-tight">
+            <span suppressHydrationWarning className="text-3xl font-extrabold text-slate-900 tracking-tight">
               {summary.currentMonthCost.toLocaleString(undefined, {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
@@ -83,6 +84,7 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({ summary }) => {
           <div className="mt-3 flex items-center text-xs">
             {summary.costPercentChange !== null ? (
               <span
+                suppressHydrationWarning
                 className={`flex items-center font-bold px-2 py-0.5 rounded-full ${
                   isCostUp
                     ? "bg-rose-50 text-rose-600 border border-rose-100"
@@ -117,7 +119,7 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({ summary }) => {
 
         <div>
           <div className="flex items-baseline space-x-2">
-            <span className="text-3xl font-extrabold text-blue-600 tracking-tight">
+            <span suppressHydrationWarning className="text-3xl font-extrabold text-blue-600 tracking-tight">
               ฿{summary.currentRate.toFixed(2)}
             </span>
             <span className="text-sm font-semibold text-slate-500">บาท / หน่วย</span>
@@ -125,7 +127,7 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({ summary }) => {
 
           <div className="mt-3 flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100">
             <span>จำนวนรอบมิเตอร์ทั้งหมด:</span>
-            <span className="font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
+            <span suppressHydrationWarning className="font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
               {summary.totalCyclesCount} รอบ
             </span>
           </div>
@@ -133,4 +135,6 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({ summary }) => {
       </div>
     </div>
   );
-};
+});
+
+SummaryCards.displayName = "SummaryCards";

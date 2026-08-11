@@ -1,16 +1,18 @@
 "use client";
 
 import React, { useState } from "react";
-import { Zap, Loader2, Calendar } from "lucide-react";
+import { Zap, Loader2, Calendar, X } from "lucide-react";
 
 interface OnboardingModalProps {
   isOpen: boolean;
+  onClose: () => void;
   onCompleteOnboarding: (baselineReading: number, startDate: string) => Promise<void>;
   isLoading: boolean;
 }
 
 export const OnboardingModal: React.FC<OnboardingModalProps> = ({
   isOpen,
+  onClose,
   onCompleteOnboarding,
   isLoading,
 }) => {
@@ -37,6 +39,15 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md transition-opacity animate-in fade-in duration-300">
       <div className="bg-white rounded-3xl max-w-md w-full p-8 shadow-2xl border border-slate-100 text-center relative overflow-hidden">
+        {/* Close / Skip Button */}
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 cursor-pointer min-h-[44px] min-w-[44px] transition-colors"
+          title="ข้าม / ทำรายการภายหลัง"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
         {/* Background glow gradient */}
         <div className="absolute -top-12 -left-12 w-40 h-40 bg-blue-100/60 rounded-full blur-2xl pointer-events-none" />
         <div className="absolute -bottom-12 -right-12 w-40 h-40 bg-emerald-100/60 rounded-full blur-2xl pointer-events-none" />
@@ -96,23 +107,33 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
             )}
           </div>
 
-          <button
-            type="submit"
-            disabled={isLoading || !reading}
-            className="w-full mt-2 flex items-center justify-center space-x-2 py-3.5 px-6 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-sm rounded-xl shadow-lg shadow-blue-200 transition-all cursor-pointer min-h-[48px]"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                <span>กำลังตั้งค่า...</span>
-              </>
-            ) : (
-              <>
-                <Zap className="w-5 h-5 fill-current" />
-                <span>เริ่มต้นใช้งาน</span>
-              </>
-            )}
-          </button>
+          <div className="flex flex-col space-y-2 pt-2">
+            <button
+              type="submit"
+              disabled={isLoading || !reading}
+              className="w-full flex items-center justify-center space-x-2 py-3.5 px-6 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-sm rounded-xl shadow-lg shadow-blue-200 transition-all cursor-pointer min-h-[48px]"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>กำลังตั้งค่า...</span>
+                </>
+              ) : (
+                <>
+                  <Zap className="w-5 h-5 fill-current" />
+                  <span>เริ่มต้นใช้งาน</span>
+                </>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full py-2.5 px-4 text-xs font-semibold text-slate-500 hover:text-slate-700 transition-colors cursor-pointer min-h-[44px]"
+            >
+              ทำรายการภายหลัง / ข้าม
+            </button>
+          </div>
         </form>
       </div>
     </div>

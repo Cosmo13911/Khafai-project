@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { memo } from "react";
 import {
   Pencil,
   Trash2,
@@ -21,7 +21,7 @@ interface DataHistoryTableProps {
   onExportPDF: () => void;
 }
 
-export const DataHistoryTable: React.FC<DataHistoryTableProps> = ({
+export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
   logs,
   onOpenAddModal,
   onOpenEditModal,
@@ -39,7 +39,7 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = ({
           </div>
           <div>
             <h2 className="text-base font-bold text-slate-900">ประวัติการบันทึกมิเตอร์ไฟ</h2>
-            <p className="text-xs text-slate-500">
+            <p suppressHydrationWarning className="text-xs text-slate-500">
               รายการบันทึกมิเตอร์ทั้งหมด ({logs.length} รายการ)
             </p>
           </div>
@@ -94,7 +94,7 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = ({
                   <th className="py-3 px-3 text-center rounded-r-lg">จัดการ</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody suppressHydrationWarning className="divide-y divide-slate-100">
                 {logs.map((log) => (
                   <tr
                     key={log.Log_ID}
@@ -159,7 +159,7 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = ({
           </div>
 
           {/* Mobile View: Card List Format */}
-          <div className="block md:hidden space-y-3">
+          <div suppressHydrationWarning className="block md:hidden space-y-3">
             {logs.map((log) => (
               <div
                 key={log.Log_ID}
@@ -220,4 +220,6 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = ({
       )}
     </div>
   );
-};
+});
+
+DataHistoryTable.displayName = "DataHistoryTable";

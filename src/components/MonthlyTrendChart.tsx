@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { memo } from "react";
 import {
   ResponsiveContainer,
   BarChart,
@@ -47,7 +47,7 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload }) => {
   return null;
 };
 
-export const MonthlyTrendChart: React.FC<MonthlyTrendChartProps> = ({ data }) => {
+export const MonthlyTrendChart: React.FC<MonthlyTrendChartProps> = memo(({ data }) => {
   return (
     <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex flex-col h-full">
       <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
@@ -95,4 +95,6 @@ export const MonthlyTrendChart: React.FC<MonthlyTrendChartProps> = ({ data }) =>
       )}
     </div>
   );
-};
+});
+
+MonthlyTrendChart.displayName = "MonthlyTrendChart";
