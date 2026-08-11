@@ -12,3 +12,4 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - **Repository URL**: https://github.com/Cosmo13911/Khafai-project.git
 - **Project Name**: Khafai (ระบบบันทึกและวิเคราะห์การใช้ไฟฟ้า)
 - **Google Client ID**: 185343067017-lnui2nbdub6tl503cuu4opntei97332k.apps.googleusercontent.com
+- **GAS Web App API URL**: https://script.google.com/macros/s/AKfycbznppna-HmTQcSo2e-4IFrSpFEgSsw1zdYWgt-rOGmO4Ns7RxHCEspP8BE8vxKLqndA/exec

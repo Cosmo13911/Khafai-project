@@ -12,6 +12,8 @@ import {
   validateMeterReadingRange,
   checkDeleteProtection,
 } from "@/lib/khafai-engine";
+import { callGasApi } from "@/lib/gas-client";
+import { MeterLog } from "@/types";
 
 export async function PUT(
   req: NextRequest,
@@ -60,8 +62,26 @@ export async function PUT(
       }
     }
 
+    // Call live GAS API
+    const gasResponse = await callGasApi<{
+      success: boolean;
+      logs?: MeterLog[];
+      message?: string;
+    }>("updateMeterLog", userId, {
+      log_id: logId,
+      Log_ID: logId,
+      Record_Date: body.Record_Date,
+      Meter_Reading: body.Meter_Reading,
+      Is_New_Meter: body.Is_New_Meter,
+    });
+
     const updated = updateMeterLog(userId, logId, body);
-    const updatedLogs = getMeterLogs(userId);
+    let updatedLogs = getMeterLogs(userId);
+
+    if (gasResponse && gasResponse.success && gasResponse.logs) {
+      updatedLogs = gasResponse.logs;
+    }
+
     const user = getUserProfile(userId);
     const summary = calculateSummaryData(updatedLogs, user.Current_Rate_Per_Unit);
     const monthlyChart = calculateMonthlyChartData(updatedLogs);
@@ -73,6 +93,7 @@ export async function PUT(
       summary,
       monthlyChart,
       rateLimit,
+      isGasConnected: !!gasResponse?.success,
     });
   } catch (error: unknown) {
     const errMessage = error instanceof Error ? error.message : "Failed to update log";
@@ -120,9 +141,23 @@ export async function DELETE(
       );
     }
 
+    // Call live GAS API
+    const gasResponse = await callGasApi<{
+      success: boolean;
+      logs?: MeterLog[];
+      message?: string;
+    }>("deleteMeterLog", userId, {
+      log_id: logId,
+      Log_ID: logId,
+    });
+
     deleteMeterLog(userId, logId);
 
-    const updatedLogs = getMeterLogs(userId);
+    let updatedLogs = getMeterLogs(userId);
+    if (gasResponse && gasResponse.success && gasResponse.logs) {
+      updatedLogs = gasResponse.logs;
+    }
+
     const user = getUserProfile(userId);
     const summary = calculateSummaryData(updatedLogs, user.Current_Rate_Per_Unit);
     const monthlyChart = calculateMonthlyChartData(updatedLogs);
@@ -133,6 +168,7 @@ export async function DELETE(
       summary,
       monthlyChart,
       rateLimit,
+      isGasConnected: !!gasResponse?.success,
     });
   } catch (error: unknown) {
     const errMessage = error instanceof Error ? error.message : "Failed to delete log";
