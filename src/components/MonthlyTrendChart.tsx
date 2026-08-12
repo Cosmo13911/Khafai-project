@@ -52,7 +52,7 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload }) => {
 
 export const MonthlyTrendChart: React.FC<MonthlyTrendChartProps> = memo(({ data }) => {
   return (
-    <div className="bg-white rounded-2xl p-5 border border-slate-200/60 shadow-xs flex flex-col h-full">
+    <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex flex-col h-full">
       <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
         <div className="flex items-center space-x-2">
           <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">

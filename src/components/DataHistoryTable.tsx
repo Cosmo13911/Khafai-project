@@ -72,7 +72,7 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
   }, [filteredLogs.length, logs.length, timeFilter]);
 
   return (
-    <div className="bg-white rounded-2xl p-5 border border-slate-200/60 shadow-xs flex flex-col transition-all duration-300 ease-out">
+    <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex flex-col transition-all duration-300 ease-out">
       {/* Header section with Actions */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-2 pb-3 border-b border-slate-100">
         <div className="flex items-center space-x-2">
@@ -255,7 +255,7 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
         ) : (
           <>
             {/* Desktop View: Fixed Header + Isolated Scrollable Table Body */}
-            <div className="hidden md:block overflow-hidden rounded-xl border border-slate-200/60">
+            <div className="hidden md:block overflow-hidden rounded-xl border border-slate-200">
               <table className="w-full text-left text-xs border-collapse table-fixed">
                 <thead>
                   <tr className="bg-slate-50 text-slate-600 font-bold uppercase tracking-wider border-b border-slate-200">
@@ -353,7 +353,7 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
                 <div
                   key={log.Log_ID}
                   style={{ animationDelay: `${index * 35}ms` }}
-                  className="bg-slate-50 rounded-xl p-3 border border-slate-200/50 space-y-1.5 relative animate-stagger shadow-2xs hover:bg-slate-100/50 transition-colors"
+                  className="bg-slate-50 rounded-xl p-3 border border-slate-200/80 space-y-1.5 relative animate-stagger shadow-2xs hover:bg-slate-100/50 transition-colors"
                 >
                   {/* Top Row: Date & Badge on Left | Total Cost on Right */}
                   <div className="flex items-center justify-between">
@@ -362,7 +362,7 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
                         {log.Record_Date}
                       </span>
                       {log.Is_New_Meter && (
-                        <span className="inline-flex items-center text-[10px] font-bold text-blue-700 bg-blue-100/70 border border-blue-200/60 px-1.5 py-0.2 rounded-full">
+                        <span className="inline-flex items-center text-[10px] font-bold text-blue-700 bg-blue-100 border border-blue-200 px-1.5 py-0.2 rounded-full">
                           รอบมิเตอร์ใหม่
                         </span>
                       )}
@@ -386,7 +386,7 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
                   </div>
 
                   {/* Second Row: Value-First Specs + Icon-Only Action Buttons */}
-                  <div className="flex items-center justify-between pt-1 border-t border-slate-200/40">
+                  <div className="flex items-center justify-between pt-1 border-t border-slate-200/60">
                     {/* Left: Value-First Specs (19 kWh • มิเตอร์ 1,982) */}
                     <div className="flex items-center space-x-1.5 text-xs text-slate-500">
                       {log.Is_New_Meter ? (
