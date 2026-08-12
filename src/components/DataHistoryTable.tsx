@@ -223,7 +223,7 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
               className="fixed inset-0 z-40"
               onClick={() => setShowCustomInputs(false)}
             />
-            <div className="absolute right-0 top-full mt-2 z-50 animate-in fade-in zoom-in-95 duration-150">
+            <div className="absolute right-0 top-full mt-2 z-50 origin-top-right max-w-[calc(100vw-2rem)] animate-in fade-in zoom-in-95 duration-150">
               <CustomDatePickerPopover
                 startDate={customStartDate}
                 endDate={customEndDate}

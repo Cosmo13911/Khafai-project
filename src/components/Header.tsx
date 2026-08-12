@@ -125,7 +125,7 @@ export const Header: React.FC<HeaderProps> = ({
                   onClick={() => closeDropdown()}
                 />
                 <div
-                  className={`absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-200 py-2 z-50 transition-all ${
+                  className={`absolute right-0 mt-2 w-64 max-w-[calc(100vw-2rem)] origin-top-right bg-white rounded-2xl shadow-xl border border-slate-200 py-2 z-50 transition-all ${
                     isDropdownClosing
                       ? "animate-out fade-out zoom-out-95 slide-out-to-top-2 duration-180 fill-mode-forwards"
                       : "animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-180"
