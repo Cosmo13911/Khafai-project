@@ -75,9 +75,9 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
   return (
     <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex flex-col transition-all duration-300 ease-out">
       {/* Header section with Actions */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-2 pb-3 border-b border-slate-100">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-2 pb-3 border-b border-slate-100 w-full">
         <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
+          <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
             <History className="w-4 h-4" />
           </div>
           <div>
@@ -89,7 +89,7 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
         </div>
 
         {/* Action Controls: Export Dropdown (Secondary) & Primary CTA */}
-        <div className="flex items-center space-x-2 ml-auto">
+        <div className="flex items-center space-x-2 ml-auto shrink-0">
           {/* Single Split Export Dropdown */}
           <div className="relative">
             <button
