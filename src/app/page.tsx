@@ -69,6 +69,7 @@ function KhafaiDashboardContent() {
     hasCompletedOnboarding: true,
   });
 
+  const [isFetchingInitialData, setIsFetchingInitialData] = useState<boolean>(true);
   const [logs, setLogs] = useState<MeterLog[]>([]);
   const [rateLimit, setRateLimit] = useState<RateLimitStatus | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -97,9 +98,9 @@ function KhafaiDashboardContent() {
     }
   }, [currentUserId]);
 
-  // Synchronize User ID & Email when session changes
+  // Synchronize User ID & Email and force fetch real data when session changes
   useEffect(() => {
-    if (isMounted) {
+    if (isMounted && currentUserId) {
       setUser((prev) => ({
         ...prev,
         User_ID: currentUserId,
@@ -126,20 +127,23 @@ function KhafaiDashboardContent() {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
-  // Fetch real data strictly for currentUserId
+  // Fetch real data strictly for currentUserId from API & Google Sheets database
   const fetchData = useCallback(async (userId: string, forceFetch = false) => {
+    setIsLoading(true);
+    if (forceFetch) {
+      setIsFetchingInitialData(true);
+    }
+    // Load local cache immediately for instant UI responsiveness
     const cached = getLocalCache(userId);
-    const CACHE_TTL_MS = 5 * 60 * 1000;
-
-    if (cached && !forceFetch && Date.now() - cached.updatedAt < CACHE_TTL_MS) {
+    if (cached && !forceFetch) {
       setUser(cached.user);
       setLogs(cached.logs);
-      return;
     }
 
     try {
       const res = await fetch("/api/meter-logs", {
         headers: { "x-user-id": userId },
+        cache: "no-store",
       });
       const data = await res.json();
 
@@ -159,39 +163,47 @@ function KhafaiDashboardContent() {
           hasCompletedOnboarding: true,
         };
         const updatedLogs = data.logs || [];
-        setUser(updatedUser);
-        setLogs(updatedLogs);
-        saveLocalCache(userId, updatedUser, updatedLogs);
+
+        // Cache Wiping Protection:
+        // Only overwrite UI and LocalStorage if GAS responded successfully (isGasConnected = true)
+        // OR if new logs are returned OR if there were no previous cached logs.
+        if (data.isGasConnected || updatedLogs.length > 0 || !cached?.logs?.length) {
+          setUser(updatedUser);
+          setLogs(updatedLogs);
+          saveLocalCache(userId, updatedUser, updatedLogs);
+        }
       } else if (data.error === "ACCOUNT_LOCKED") {
         addToast("error", "ระบบถูกระงับชั่วคราว", "เข้าสู่สถานะถูกล็อก");
       }
     } catch {
-      // Fallback
+      // Fallback to local cache if network error
     } finally {
       setIsLoading(false);
+      setIsFetchingInitialData(false);
     }
   }, []);
 
   useEffect(() => {
-    if (isMounted) {
-      fetchData(currentUserId);
+    if (isMounted && currentUserId) {
+      fetchData(currentUserId, true);
     }
   }, [currentUserId, fetchData, isMounted]);
 
-  // 0ms Optimistic UI Save Log Handler + Local Cache Persistence
+  // 0ms Optimistic UI Save Log Handler + Server & GAS Database Persistence
   const handleSaveLog = async (formData: {
     Record_Date: string;
     Meter_Reading: number;
     Is_New_Meter: boolean;
   }) => {
     const isEditing = !!editingLog;
+    const targetLogId = editingLog?.Log_ID;
     const currentRate = user.Current_Rate_Per_Unit;
 
     let newLogs: MeterLog[] = [];
-    if (isEditing && editingLog) {
+    if (isEditing && targetLogId) {
       newLogs = recalculateLogs(
         logs.map((l) =>
-          l.Log_ID === editingLog.Log_ID
+          l.Log_ID === targetLogId
             ? { ...l, ...formData, Meter_Reading: Number(formData.Meter_Reading) }
             : l
         ),
@@ -216,10 +228,10 @@ function KhafaiDashboardContent() {
 
     setIsLogFormOpen(false);
     setEditingLog(null);
-    addToast("success", isEditing ? "แก้ไขรายการบันทึกเรียบร้อยแล้ว" : "เพิ่มรายการบันทึกใหม่เรียบร้อยแล้ว");
+    setIsLoading(true);
 
     try {
-      const url = isEditing ? `/api/meter-logs/${editingLog?.Log_ID}` : "/api/meter-logs";
+      const url = isEditing && targetLogId ? `/api/meter-logs/${targetLogId}` : "/api/meter-logs";
       const method = isEditing ? "PUT" : "POST";
 
       const res = await fetch(url, {
@@ -238,9 +250,19 @@ function KhafaiDashboardContent() {
         setLogs(data.logs);
         if (data.user) setUser(data.user);
         saveLocalCache(currentUserId, data.user || user, data.logs);
+        addToast(
+          "success",
+          isEditing
+            ? "แก้ไขรายการบันทึกและจัดเก็บลงฐานข้อมูลเรียบร้อยแล้ว"
+            : "บันทึกข้อมูลมิเตอร์ลงฐานข้อมูล Google Sheets เรียบร้อยแล้ว"
+        );
+      } else {
+        addToast("error", data.message || "เกิดข้อผิดพลาดในการบันทึกข้อมูลลงฐานข้อมูล");
       }
     } catch {
-      // Fallback
+      addToast("error", "ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์เพื่อบันทึกข้อมูลได้");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -254,7 +276,7 @@ function KhafaiDashboardContent() {
     saveLocalCache(currentUserId, updatedUser, updatedLogs);
 
     setIsTariffModalOpen(false);
-    addToast("success", `ปรับเปลี่ยนอัตราค่าไฟเป็น ฿${newRate.toFixed(2)} /หน่วย เรียบร้อยแล้ว`);
+    setIsLoading(true);
 
     try {
       const res = await fetch("/api/user", {
@@ -270,9 +292,14 @@ function KhafaiDashboardContent() {
       if (data.success && data.user) {
         setUser(data.user);
         saveLocalCache(currentUserId, data.user, updatedLogs);
+        addToast("success", `ปรับเปลี่ยนอัตราค่าไฟเป็น ฿${newRate.toFixed(2)} /หน่วย เรียบร้อยแล้ว`);
+      } else {
+        addToast("error", data.message || "ไม่สามารถอัปเดตอัตราค่าไฟในฐานข้อมูลได้");
       }
     } catch {
-      // Fallback
+      addToast("error", "ไม่สามารถเชื่อมต่อเพื่อบันทึกอัตราค่าไฟได้");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -303,7 +330,7 @@ function KhafaiDashboardContent() {
 
     setIsDeleteModalOpen(false);
     setTargetDeleteLog(null);
-    addToast("success", "ลบรายการบันทึกเรียบร้อยแล้ว");
+    setIsLoading(true);
 
     try {
       const res = await fetch(`/api/meter-logs/${logId}`, {
@@ -315,9 +342,14 @@ function KhafaiDashboardContent() {
       if (data.success && data.logs) {
         setLogs(data.logs);
         saveLocalCache(currentUserId, user, data.logs);
+        addToast("success", "ลบรายการบันทึกออกจากฐานข้อมูลเรียบร้อยแล้ว");
+      } else {
+        addToast("error", data.message || "เกิดข้อผิดพลาดในการลบรายการ");
       }
     } catch {
-      // Fallback
+      addToast("error", "ไม่สามารถเชื่อมต่อเพื่อลบรายการได้");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -385,34 +417,55 @@ function KhafaiDashboardContent() {
 
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Executive Summary Cards */}
-        <SummaryCards summary={summary} />
-
-        {/* 2-Column Responsive Layout for Chart and Table */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* Left Column: Monthly Trend Bar Chart (5 cols on Desktop) */}
-          <div className="lg:col-span-5 h-full">
-            <MonthlyTrendChart data={monthlyChart} />
+        {isFetchingInitialData ? (
+          <div className="py-24 flex flex-col items-center justify-center space-y-4">
+            <div className="relative">
+              <div className="w-16 h-16 rounded-full border-4 border-blue-200 border-t-blue-600 animate-spin shadow-md"></div>
+              <div className="absolute inset-0 flex items-center justify-center text-blue-600 font-extrabold text-[10px]">
+                GAS
+              </div>
+            </div>
+            <div className="text-center space-y-1.5 animate-pulse">
+              <h3 className="text-base font-bold text-slate-800 tracking-tight">
+                กำลังเชื่อมต่อและดึงข้อมูลจาก Google Sheets...
+              </h3>
+              <p className="text-xs text-slate-500 font-medium max-w-sm mx-auto">
+                รอซิงค์ข้อมูลให้ครบถ้วน 100% ก่อนแสดงผลเพื่อความแม่นยำสูงสุด
+              </p>
+            </div>
           </div>
+        ) : (
+          <>
+            {/* Executive Summary Cards */}
+            <SummaryCards summary={summary} />
 
-          {/* Right Column: Data History Table & Card List (7 cols on Desktop) */}
-          <div className="lg:col-span-7 h-full">
-            <DataHistoryTable
-              logs={logs}
-              onOpenAddModal={() => {
-                setEditingLog(null);
-                setIsLogFormOpen(true);
-              }}
-              onOpenEditModal={(log) => {
-                setEditingLog(log);
-                setIsLogFormOpen(true);
-              }}
-              onConfirmDelete={handleOpenDeleteModal}
-              onExportCSV={() => exportToCSV(logs, user)}
-              onExportPDF={() => exportToPDF(logs, user)}
-            />
-          </div>
-        </div>
+            {/* 2-Column Responsive Layout for Chart and Table */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              {/* Left Column: Monthly Trend Bar Chart (5 cols on Desktop) */}
+              <div className="lg:col-span-5 h-full">
+                <MonthlyTrendChart data={monthlyChart} />
+              </div>
+
+              {/* Right Column: Data History Table & Card List (7 cols on Desktop) */}
+              <div className="lg:col-span-7 h-full">
+                <DataHistoryTable
+                  logs={logs}
+                  onOpenAddModal={() => {
+                    setEditingLog(null);
+                    setIsLogFormOpen(true);
+                  }}
+                  onOpenEditModal={(log) => {
+                    setEditingLog(log);
+                    setIsLogFormOpen(true);
+                  }}
+                  onConfirmDelete={handleOpenDeleteModal}
+                  onExportCSV={() => exportToCSV(logs, user)}
+                  onExportPDF={() => exportToPDF(logs, user)}
+                />
+              </div>
+            </div>
+          </>
+        )}
       </main>
 
       {/* Test API Modal */}

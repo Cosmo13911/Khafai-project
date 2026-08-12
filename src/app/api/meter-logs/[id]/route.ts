@@ -4,6 +4,7 @@ import {
   updateMeterLog,
   deleteMeterLog,
   getUserProfile,
+  syncMeterLogsFromGas,
 } from "@/lib/database";
 import { checkRateLimit } from "@/lib/rate-limiter";
 import {
@@ -13,6 +14,14 @@ import {
   checkDeleteProtection,
 } from "@/lib/khafai-engine";
 import { callGasApi } from "@/lib/gas-client";
+import { MeterLog } from "@/types";
+
+interface GasResponse {
+  success?: boolean;
+  logs?: MeterLog[];
+  error?: string;
+  message?: string;
+}
 
 export async function PUT(
   req: NextRequest,
@@ -61,22 +70,34 @@ export async function PUT(
       }
     }
 
-    // Fast local update < 5ms
-    const updated = updateMeterLog(userId, logId, body);
-    const updatedLogs = getMeterLogs(userId);
-    const updatedUser = getUserProfile(userId);
+    // Fast local optimistic update
+    let updated = updateMeterLog(userId, logId, body);
+    let updatedLogs = getMeterLogs(userId);
+    let updatedUser = getUserProfile(userId);
+    let isGasConnected = false;
+
+    // Synchronous call to GAS Web App
+    try {
+      const gasRes = await callGasApi<GasResponse>("updateMeterLog", userId, {
+        log_id: logId,
+        Log_ID: logId,
+        Record_Date: body.Record_Date,
+        Meter_Reading: body.Meter_Reading,
+        Is_New_Meter: body.Is_New_Meter,
+      });
+
+      if (gasRes?.success && Array.isArray(gasRes.logs)) {
+        isGasConnected = true;
+        updatedLogs = syncMeterLogsFromGas(userId, gasRes.logs);
+        const match = updatedLogs.find((l) => l.Log_ID === logId);
+        if (match) updated = match;
+      }
+    } catch (err) {
+      console.warn("GAS update error in PUT:", err);
+    }
 
     const summary = calculateSummaryData(updatedLogs, updatedUser.Current_Rate_Per_Unit);
     const monthlyChart = calculateMonthlyChartData(updatedLogs);
-
-    // Non-blocking background sync
-    callGasApi("updateMeterLog", userId, {
-      log_id: logId,
-      Log_ID: logId,
-      Record_Date: body.Record_Date,
-      Meter_Reading: body.Meter_Reading,
-      Is_New_Meter: body.Is_New_Meter,
-    }).catch(() => {});
 
     return NextResponse.json({
       success: true,
@@ -86,7 +107,7 @@ export async function PUT(
       summary,
       monthlyChart,
       rateLimit,
-      isGasConnected: true,
+      isGasConnected,
     });
   } catch (error: unknown) {
     const errMessage = error instanceof Error ? error.message : "Failed to update log";
@@ -134,19 +155,29 @@ export async function DELETE(
       );
     }
 
-    // Fast local delete < 5ms
+    // Fast local optimistic delete
     deleteMeterLog(userId, logId);
-    const updatedLogs = getMeterLogs(userId);
-    const updatedUser = getUserProfile(userId);
+    let updatedLogs = getMeterLogs(userId);
+    let updatedUser = getUserProfile(userId);
+    let isGasConnected = false;
+
+    // Synchronous call to GAS Web App
+    try {
+      const gasRes = await callGasApi<GasResponse>("deleteMeterLog", userId, {
+        log_id: logId,
+        Log_ID: logId,
+      });
+
+      if (gasRes?.success && Array.isArray(gasRes.logs)) {
+        isGasConnected = true;
+        updatedLogs = syncMeterLogsFromGas(userId, gasRes.logs);
+      }
+    } catch (err) {
+      console.warn("GAS delete error in DELETE:", err);
+    }
 
     const summary = calculateSummaryData(updatedLogs, updatedUser.Current_Rate_Per_Unit);
     const monthlyChart = calculateMonthlyChartData(updatedLogs);
-
-    // Non-blocking background sync
-    callGasApi("deleteMeterLog", userId, {
-      log_id: logId,
-      Log_ID: logId,
-    }).catch(() => {});
 
     return NextResponse.json({
       success: true,
@@ -155,7 +186,7 @@ export async function DELETE(
       summary,
       monthlyChart,
       rateLimit,
-      isGasConnected: true,
+      isGasConnected,
     });
   } catch (error: unknown) {
     const errMessage = error instanceof Error ? error.message : "Failed to delete log";

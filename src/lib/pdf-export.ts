@@ -51,46 +51,73 @@ export function exportToPDF(logs: MeterLog[], user: UserProfile): void {
   const doc = new jsPDF();
 
   // Document Title Header
-  doc.setFontSize(20);
+  doc.setFontSize(18);
   doc.setTextColor(15, 23, 42); // slate-900
-  doc.text("Khafai - Electricity Usage Report", 14, 20);
+  doc.text("Khafai - Electricity Usage Report", 14, 18);
 
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   doc.setTextColor(100, 116, 139); // slate-500
-  doc.text(`User ID: ${user.User_ID}`, 14, 28);
-  doc.text(`Email: ${user.Email}`, 14, 34);
-  doc.text(`Current Tariff Rate: ${user.Current_Rate_Per_Unit} THB/unit`, 14, 40);
-  doc.text(`Report Date: ${new Date().toLocaleDateString("th-TH")}`, 14, 46);
+  doc.text(`User ID: ${user.User_ID}`, 14, 25);
+  doc.text(`Email: ${user.Email}`, 14, 30);
+  doc.text(`Current Tariff Rate: ${user.Current_Rate_Per_Unit.toFixed(2)} THB / unit`, 14, 35);
+  doc.text(`Report Generated: ${new Date().toLocaleDateString("en-GB")}`, 14, 40);
 
-  // Summary Banner
-  const totalUnits = logs.reduce((acc, l) => acc + l.Units_Used, 0);
-  const totalCost = logs.reduce((acc, l) => acc + l.Total_Cost, 0);
+  // Summary Banner Box (2-row grid to prevent horizontal overflow)
+  const totalUnits = logs.reduce((acc, l) => acc + (Number(l.Units_Used) || 0), 0);
+  const totalCost = logs.reduce((acc, l) => acc + (Number(l.Total_Cost) || 0), 0);
 
   doc.setFillColor(241, 245, 249); // slate-100
-  doc.rect(14, 52, 182, 18, "F");
+  doc.rect(14, 45, 182, 22, "F");
 
-  doc.setFontSize(11);
-  doc.setTextColor(30, 41, 59);
-  doc.text(`Total Recorded Entries: ${logs.length}`, 20, 63);
-  doc.text(`Total Energy Consumed: ${totalUnits.toFixed(1)} kWh`, 85, 63);
-  doc.text(`Total Amount: ฿${totalCost.toFixed(2)}`, 150, 63);
+  doc.setFontSize(9);
+  doc.setTextColor(51, 65, 85); // slate-700
 
-  // Table Data
+  // Row 1 inside banner
+  doc.text(`Total Recorded Entries: ${logs.length}`, 18, 53);
+  doc.text(
+    `Total Energy Consumed: ${totalUnits.toLocaleString("en-US", {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+    })} kWh`,
+    105,
+    53
+  );
+
+  // Row 2 inside banner
+  doc.text(`Current Tariff Rate: ${user.Current_Rate_Per_Unit.toFixed(2)} THB`, 18, 61);
+  doc.setFontSize(9.5);
+  doc.setTextColor(37, 99, 235); // blue-600 for total amount
+  doc.text(
+    `Total Amount: ${totalCost.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })} THB`,
+    105,
+    61
+  );
+
+  // Table Headers & Data
   const tableHeaders = [
     ["Record Date", "Meter Reading", "Units Used", "Tariff Rate", "Total Cost", "Cycle Note"],
   ];
 
   const tableData = logs.map((log) => [
     log.Record_Date,
-    log.Meter_Reading.toString(),
-    `${log.Units_Used} kWh`,
-    `฿${user.Current_Rate_Per_Unit}`,
-    `฿${log.Total_Cost.toFixed(2)}`,
+    Number(log.Meter_Reading).toLocaleString("en-US"),
+    `${Number(log.Units_Used).toLocaleString("en-US", {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+    })} kWh`,
+    `${user.Current_Rate_Per_Unit.toFixed(2)} THB`,
+    `${Number(log.Total_Cost).toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })} THB`,
     log.Is_New_Meter ? "New Cycle (Baseline)" : "-",
   ]);
 
   autoTable(doc, {
-    startY: 76,
+    startY: 72,
     head: tableHeaders,
     body: tableData,
     theme: "striped",
@@ -103,8 +130,16 @@ export function exportToPDF(logs: MeterLog[], user: UserProfile): void {
       fillColor: [248, 250, 252], // slate-50
     },
     styles: {
-      fontSize: 9,
+      fontSize: 8.5,
       cellPadding: 3,
+    },
+    columnStyles: {
+      0: { halign: "left" }, // Record Date
+      1: { halign: "right" }, // Meter Reading (Right aligned)
+      2: { halign: "right" }, // Units Used (Right aligned)
+      3: { halign: "right" }, // Tariff Rate (Right aligned)
+      4: { halign: "right" }, // Total Cost (Right aligned)
+      5: { halign: "center" }, // Cycle Note
     },
   });
 

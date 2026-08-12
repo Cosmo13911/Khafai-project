@@ -17,29 +17,28 @@ export async function callGasApi<T = Record<string, unknown>>(
 ): Promise<T | null> {
   const baseUrl = getGasUrl();
 
-  const payload = {
+  const payload: Record<string, unknown> = {
     action,
     user_id: userId,
     User_ID: userId,
     ...extraParams,
   };
 
-  // Append action and user_id to query string so GAS handles redirected GET/POST requests seamlessly
+  // Set action and user_id into searchParams for clean URL routing
   const urlObj = new URL(baseUrl);
   urlObj.searchParams.set("action", action);
   urlObj.searchParams.set("user_id", userId);
 
-  // Set 3.5s timeout controller to guarantee zero UI hanging
+  // Set 15s timeout controller to give GAS sufficient execution time for Google Sheets write & recalculation
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 3500);
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
 
   try {
+    const isGetAction = action === "getMeterLogs" || action === "getUser";
     const res = await fetch(urlObj.toString(), {
-      method: "POST",
-      headers: {
-        "Content-Type": "text/plain;charset=utf-8",
-      },
-      body: JSON.stringify(payload),
+      method: isGetAction ? "GET" : "POST",
+      headers: isGetAction ? undefined : { "Content-Type": "text/plain;charset=utf-8" },
+      body: isGetAction ? undefined : JSON.stringify(payload),
       redirect: "follow",
       signal: controller.signal,
     });
@@ -56,7 +55,7 @@ export async function callGasApi<T = Record<string, unknown>>(
   } catch (error: unknown) {
     clearTimeout(timeoutId);
     if (error instanceof Error && error.name === "AbortError") {
-      console.log("GAS API call timed out (3.5s limit) - Falling back to instant local engine");
+      console.warn("GAS API call timed out (15s limit) - Falling back to instant local engine");
     } else {
       console.warn("GAS API fetch notice:", error);
     }

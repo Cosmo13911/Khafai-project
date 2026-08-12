@@ -3,6 +3,8 @@ import {
   getMeterLogs,
   createMeterLog,
   getUserProfile,
+  syncUserProfileFromGas,
+  syncMeterLogsFromGas,
 } from "@/lib/database";
 import { checkRateLimit } from "@/lib/rate-limiter";
 import {
@@ -11,19 +13,42 @@ import {
   validateMeterReadingRange,
 } from "@/lib/khafai-engine";
 import { callGasApi } from "@/lib/gas-client";
+import { MeterLog, UserProfile } from "@/types";
+
+interface GasResponse {
+  success?: boolean;
+  user?: UserProfile;
+  logs?: MeterLog[];
+  error?: string;
+  message?: string;
+}
 
 export async function GET(req: NextRequest) {
   const userId = req.headers.get("x-user-id") || "google-sub-1029384756";
   const rateLimit = checkRateLimit(userId, "read");
 
-  // Local database fetch executes in < 2ms
-  const user = getUserProfile(userId);
-  const logs = getMeterLogs(userId);
+  let user = getUserProfile(userId);
+  let logs = getMeterLogs(userId);
+  let isGasConnected = false;
+
+  // Await real database fetch from Google Apps Script Web App
+  try {
+    const gasRes = await callGasApi<GasResponse>("getMeterLogs", userId);
+    if (gasRes?.success) {
+      isGasConnected = true;
+      if (gasRes.user) {
+        user = syncUserProfileFromGas(userId, gasRes.user);
+      }
+      if (Array.isArray(gasRes.logs)) {
+        logs = syncMeterLogsFromGas(userId, gasRes.logs);
+      }
+    }
+  } catch (err) {
+    console.warn("GAS fetch error in GET:", err);
+  }
+
   const summary = calculateSummaryData(logs, user.Current_Rate_Per_Unit);
   const monthlyChart = calculateMonthlyChartData(logs);
-
-  // Background non-blocking sync with GAS Web App (Fire-and-forget)
-  callGasApi("getMeterLogs", userId).catch(() => {});
 
   return NextResponse.json({
     success: true,
@@ -32,7 +57,7 @@ export async function GET(req: NextRequest) {
     summary,
     monthlyChart,
     rateLimit,
-    isGasConnected: true,
+    isGasConnected,
   });
 }
 
@@ -77,24 +102,39 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Instant local creation in < 5ms
-    const created = createMeterLog(userId, {
+    // Fast optimistic local creation
+    let created = createMeterLog(userId, {
       Record_Date: body.Record_Date,
       Meter_Reading: Number(body.Meter_Reading),
       Is_New_Meter: Boolean(body.Is_New_Meter),
     });
 
-    const updatedLogs = getMeterLogs(userId);
-    const updatedUser = getUserProfile(userId);
+    let updatedLogs = getMeterLogs(userId);
+    let updatedUser = getUserProfile(userId);
+    let isGasConnected = false;
+
+    // Direct synchronous call to Google Apps Script Web App database
+    try {
+      const gasRes = await callGasApi<GasResponse>("createMeterLog", userId, {
+        Record_Date: body.Record_Date,
+        Meter_Reading: body.Meter_Reading,
+        Is_New_Meter: body.Is_New_Meter,
+      });
+
+      if (gasRes?.success && Array.isArray(gasRes.logs)) {
+        isGasConnected = true;
+        updatedLogs = syncMeterLogsFromGas(userId, gasRes.logs);
+        const match = updatedLogs.find(
+          (l) => l.Record_Date === body.Record_Date && l.Meter_Reading === Number(body.Meter_Reading)
+        );
+        if (match) created = match;
+      }
+    } catch (err) {
+      console.warn("GAS save error in POST:", err);
+    }
+
     const summary = calculateSummaryData(updatedLogs, updatedUser.Current_Rate_Per_Unit);
     const monthlyChart = calculateMonthlyChartData(updatedLogs);
-
-    // Non-blocking background sync with GAS Web App
-    callGasApi("createMeterLog", userId, {
-      Record_Date: body.Record_Date,
-      Meter_Reading: body.Meter_Reading,
-      Is_New_Meter: body.Is_New_Meter,
-    }).catch(() => {});
 
     return NextResponse.json({
       success: true,
@@ -104,7 +144,7 @@ export async function POST(req: NextRequest) {
       summary,
       monthlyChart,
       rateLimit,
-      isGasConnected: true,
+      isGasConnected,
     });
   } catch (error: unknown) {
     const errMessage = error instanceof Error ? error.message : "Failed to create log";

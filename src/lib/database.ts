@@ -6,6 +6,44 @@ import { recalculateLogs } from "./khafai-engine";
 let dbUsers: Record<string, UserProfile> = {};
 let dbLogs: MeterLog[] = [];
 
+export function syncUserProfileFromGas(
+  userId: string,
+  user: Partial<UserProfile>
+): UserProfile {
+  const current = dbUsers[userId] || {
+    User_ID: userId,
+    Email: `${userId}@khafai.app`,
+    Current_Rate_Per_Unit: 8.0,
+    Created_At: new Date().toISOString(),
+    hasCompletedOnboarding: true,
+  };
+  dbUsers[userId] = {
+    ...current,
+    ...user,
+    User_ID: userId,
+  };
+  return dbUsers[userId];
+}
+
+export function syncMeterLogsFromGas(
+  userId: string,
+  gasLogs: MeterLog[]
+): MeterLog[] {
+  const user = getUserProfile(userId);
+  const otherLogs = dbLogs.filter((l) => l.User_ID !== userId);
+  const formattedGasLogs = gasLogs.map((log) => ({
+    ...log,
+    User_ID: userId,
+    Meter_Reading: Number(log.Meter_Reading),
+    Units_Used: Number(log.Units_Used || 0),
+    Total_Cost: Number(log.Total_Cost || 0),
+    Is_New_Meter: Boolean(log.Is_New_Meter),
+  }));
+  const recalculated = recalculateLogs(formattedGasLogs, user.Current_Rate_Per_Unit);
+  dbLogs = [...otherLogs, ...recalculated];
+  return recalculated;
+}
+
 export function getUserProfile(userId: string): UserProfile {
   if (!dbUsers[userId]) {
     dbUsers[userId] = {
