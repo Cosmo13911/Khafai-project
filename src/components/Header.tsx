@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Settings, RefreshCw, LogIn, LogOut, ChevronDown, FlaskConical } from "lucide-react";
+import { Settings, LogIn, LogOut, ChevronDown } from "lucide-react";
 import { UserProfile } from "@/types";
 import { useGoogleAuth } from "@/context/GoogleAuthContext";
 import { KhafaiLogo } from "./KhafaiLogo";
@@ -101,71 +101,72 @@ export const Header: React.FC<HeaderProps> = ({
                   onClick={() => setIsDropdownOpen(false)}
                 />
                 <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-200 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-                  {/* User Email & ID Block inside Dropdown */}
-                  <div className="px-4 py-2.5 border-b border-slate-100">
-                    <p className="text-xs font-bold text-slate-900">{displayName}</p>
-                    <p className="text-xs text-slate-500 truncate">{displayEmail}</p>
-                    <p className="text-[10px] text-slate-400 font-mono mt-1 truncate">
-                      ID: {user.User_ID}
-                    </p>
+                  {/* Profile Header: Avatar + Name + Email */}
+                  <div className="px-4 py-3 border-b border-slate-100 flex items-center space-x-3">
+                    {isMounted && session?.Picture ? (
+                      // eslint-disable-next-next-line @next/next/no-img-element
+                      <img
+                        src={session.Picture}
+                        alt={displayName}
+                        className="w-9 h-9 rounded-full object-cover border border-slate-200"
+                      />
+                    ) : (
+                      <div
+                        suppressHydrationWarning
+                        className="w-9 h-9 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-sm shadow-xs flex-shrink-0"
+                      >
+                        {avatarChar}
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p suppressHydrationWarning className="text-xs font-bold text-slate-900 truncate">
+                        {displayName}
+                      </p>
+                      <p suppressHydrationWarning className="text-[11px] text-slate-500 truncate">
+                        {displayEmail}
+                      </p>
+                    </div>
                   </div>
 
-                  <button
-                    onClick={() => {
-                      setIsDropdownOpen(false);
-                      onOpenGoogleLoginModal();
-                    }}
-                    className="w-full flex items-center space-x-2 px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 font-medium transition-colors cursor-pointer text-left"
-                  >
-                    <LogIn className="w-4 h-4 text-blue-600" />
-                    <span>สลับบัญชี / เข้าสู่ระบบด้วย Google</span>
-                  </button>
+                  {/* Section 1: User Settings */}
+                  <div className="py-1 border-b border-slate-100">
+                    <button
+                      onClick={() => {
+                        setIsDropdownOpen(false);
+                        onOpenGoogleLoginModal();
+                      }}
+                      className="w-full flex items-center space-x-2.5 px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 font-medium transition-colors cursor-pointer text-left"
+                    >
+                      <LogIn className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                      <span>สลับบัญชี Google</span>
+                    </button>
 
-                  <button
-                    onClick={() => {
-                      setIsDropdownOpen(false);
-                      onOpenTariffModal();
-                    }}
-                    className="w-full flex items-center space-x-2 px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 font-medium transition-colors cursor-pointer text-left"
-                  >
-                    <Settings className="w-4 h-4 text-slate-500" />
-                    <span>ตั้งค่าอัตราค่าไฟ</span>
-                  </button>
+                    <button
+                      onClick={() => {
+                        setIsDropdownOpen(false);
+                        onOpenTariffModal();
+                      }}
+                      className="w-full flex items-center space-x-2.5 px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 font-medium transition-colors cursor-pointer text-left"
+                    >
+                      <Settings className="w-4 h-4 text-slate-500 flex-shrink-0" />
+                      <span>ตั้งค่าอัตราค่าไฟ</span>
+                    </button>
+                  </div>
 
-                  <button
-                    onClick={() => {
-                      setIsDropdownOpen(false);
-                      onOpenTestApiModal();
-                    }}
-                    className="w-full flex items-center space-x-2 px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 font-medium transition-colors cursor-pointer text-left"
-                  >
-                    <FlaskConical className="w-4 h-4 text-purple-600" />
-                    <span>เครื่องมือทดสอบยิง API (Dev Console)</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setIsDropdownOpen(false);
-                      onResetData();
-                    }}
-                    disabled={isLoading}
-                    className="w-full flex items-center space-x-2 px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 font-medium transition-colors cursor-pointer text-left"
-                  >
-                    <RefreshCw className={`w-4 h-4 text-amber-600 ${isLoading ? "animate-spin" : ""}`} />
-                    <span>รีเซ็ต / ล้างข้อมูล</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setIsDropdownOpen(false);
-                      logout();
-                      onOpenGoogleLoginModal();
-                    }}
-                    className="w-full flex items-center space-x-2 px-4 py-2 text-xs text-rose-600 hover:bg-rose-50 font-medium transition-colors cursor-pointer text-left border-t border-slate-100 mt-1 pt-2"
-                  >
-                    <LogOut className="w-4 h-4 text-rose-600" />
-                    <span>ออกจากระบบ (Logout)</span>
-                  </button>
+                  {/* Section 3: Account Actions (Destructive) */}
+                  <div className="pt-1">
+                    <button
+                      onClick={() => {
+                        setIsDropdownOpen(false);
+                        logout();
+                        onOpenGoogleLoginModal();
+                      }}
+                      className="w-full flex items-center space-x-2.5 px-4 py-2 text-xs text-rose-600 hover:bg-rose-50 font-semibold transition-colors cursor-pointer text-left"
+                    >
+                      <LogOut className="w-4 h-4 text-rose-600 flex-shrink-0" />
+                      <span>ออกจากระบบ</span>
+                    </button>
+                  </div>
                 </div>
               </>
             )}
