@@ -10,6 +10,8 @@ import {
   History,
   Info,
   Calendar,
+  ChevronDown,
+  FileSpreadsheet,
 } from "lucide-react";
 import { MeterLog } from "@/types";
 import { CustomDatePickerPopover } from "./CustomDatePickerPopover";
@@ -48,8 +50,7 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
   onExportPDF,
 }) => {
   const [showCustomInputs, setShowCustomInputs] = useState<boolean>(false);
-
-
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState<boolean>(false);
 
   // Dynamic counter subtitle
   const subtitleText = useMemo(() => {
@@ -84,26 +85,61 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
           </div>
         </div>
 
-        {/* Action Controls & Ghost Export Buttons */}
-        <div className="flex items-center flex-wrap gap-2">
-          <button
-            onClick={() => onExportCSV(filteredLogs)}
-            className="flex items-center space-x-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-lg transition-colors cursor-pointer min-h-[44px]"
-            title="ส่งออกไฟล์ CSV เฉพาะช่วงเวลาที่เลือก"
-          >
-            <FileText className="w-3.5 h-3.5 text-slate-600" />
-            <span>ส่งออก CSV</span>
-          </button>
+        {/* Action Controls: Export Dropdown (Secondary) & Primary CTA */}
+        <div className="flex items-center space-x-2">
+          {/* Single Split Export Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
+              className="flex items-center space-x-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-lg transition-colors cursor-pointer min-h-[44px]"
+              title="ส่งออกรายงานข้อมูล"
+            >
+              <Download className="w-3.5 h-3.5 text-slate-600" />
+              <span>ส่งออก</span>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+            </button>
 
-          <button
-            onClick={() => onExportPDF(filteredLogs)}
-            className="flex items-center space-x-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-lg transition-colors cursor-pointer min-h-[44px]"
-            title="ส่งออกไฟล์ PDF เฉพาะช่วงเวลาที่เลือก"
-          >
-            <Download className="w-3.5 h-3.5 text-slate-600" />
-            <span>ส่งออก PDF</span>
-          </button>
+            {isExportMenuOpen && (
+              <>
+                {/* Backdrop overlay */}
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setIsExportMenuOpen(false)}
+                />
+                <div className="absolute right-0 top-full mt-1.5 w-48 bg-white rounded-xl border border-slate-200 shadow-xl p-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+                  <button
+                    onClick={() => {
+                      setIsExportMenuOpen(false);
+                      onExportPDF(filteredLogs);
+                    }}
+                    className="w-full flex items-center space-x-2.5 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900 rounded-lg transition-colors cursor-pointer text-left"
+                  >
+                    <FileText className="w-4 h-4 text-rose-500" />
+                    <div className="flex flex-col">
+                      <span className="font-semibold">ส่งออกเป็น PDF</span>
+                      <span className="text-[10px] text-slate-400">ไฟล์รายงานพร้อมสรุปยอด</span>
+                    </div>
+                  </button>
 
+                  <button
+                    onClick={() => {
+                      setIsExportMenuOpen(false);
+                      onExportCSV(filteredLogs);
+                    }}
+                    className="w-full flex items-center space-x-2.5 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900 rounded-lg transition-colors cursor-pointer text-left"
+                  >
+                    <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                    <div className="flex flex-col">
+                      <span className="font-semibold">ส่งออกเป็น CSV</span>
+                      <span className="text-[10px] text-slate-400">ไฟล์ข้อมูลตารางดิบ</span>
+                    </div>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Primary CTA: Add Record */}
           <button
             onClick={onOpenAddModal}
             className="flex items-center space-x-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 px-3.5 py-2 rounded-lg shadow-sm transition-colors cursor-pointer min-h-[44px]"
