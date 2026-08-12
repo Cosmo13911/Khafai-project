@@ -12,6 +12,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { MeterLog } from "@/types";
+import { CustomDatePickerPopover } from "./CustomDatePickerPopover";
 
 export type TimeFilterMode = "this_week" | "this_month" | "this_year" | "all" | "custom";
 
@@ -218,38 +219,17 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
         </button>
       </div>
 
-      {/* Custom Date Range Picker Inputs */}
+      {/* Custom Date Range Picker Popover */}
       {timeFilter === "custom" && showCustomInputs && (
-        <div className="flex flex-wrap items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl mb-3 text-xs animate-in fade-in slide-in-from-top-1 duration-150">
-          <div className="flex items-center space-x-1.5">
-            <span className="text-slate-500 font-medium">เริ่มต้น:</span>
-            <input
-              type="date"
-              value={customStartDate}
-              onChange={(e) => setCustomStartDate(e.target.value)}
-              className="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-slate-800 font-mono focus:outline-hidden focus:border-blue-500"
-            />
-          </div>
-          <div className="flex items-center space-x-1.5">
-            <span className="text-slate-500 font-medium">ถึงวันที่:</span>
-            <input
-              type="date"
-              value={customEndDate}
-              onChange={(e) => setCustomEndDate(e.target.value)}
-              className="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-slate-800 font-mono focus:outline-hidden focus:border-blue-500"
-            />
-          </div>
-          {(customStartDate || customEndDate) && (
-            <button
-              onClick={() => {
-                setCustomStartDate("");
-                setCustomEndDate("");
-              }}
-              className="text-xs text-slate-500 hover:text-slate-800 underline ml-auto"
-            >
-              ล้างค่า
-            </button>
-          )}
+        <div className="mb-3 animate-in fade-in slide-in-from-top-1 duration-150">
+          <CustomDatePickerPopover
+            startDate={customStartDate}
+            endDate={customEndDate}
+            onChange={(start, end) => {
+              setCustomStartDate(start);
+              setCustomEndDate(end);
+            }}
+          />
         </div>
       )}
 
