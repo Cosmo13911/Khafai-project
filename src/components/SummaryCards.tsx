@@ -71,14 +71,14 @@ export const SummaryCards: React.FC<SummaryCardsProps> = memo(({ summary }) => {
 
         <div>
           <div className="flex items-baseline space-x-1">
-            <span className="text-base font-bold text-slate-700">฿</span>
-            <span suppressHydrationWarning className="text-3xl font-extrabold text-slate-900 tracking-tight">
+            <span className="text-lg font-normal text-slate-400 mr-0.5">฿</span>
+            <span suppressHydrationWarning className="text-3xl font-bold text-slate-800 tracking-tight font-mono">
               {summary.currentMonthCost.toLocaleString(undefined, {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
               })}
             </span>
-            <span className="text-sm font-normal text-slate-500 ml-1 align-baseline">บาท</span>
+            <span className="text-sm font-normal text-slate-400 ml-1.5 align-baseline">บาท</span>
           </div>
 
           <div className="mt-3 flex items-center text-xs">

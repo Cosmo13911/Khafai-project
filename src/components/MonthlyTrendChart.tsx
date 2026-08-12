@@ -35,7 +35,10 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload }) => {
         </div>
         <div className="flex justify-between space-x-4">
           <span className="text-slate-400">ค่าไฟฟ้ารวม:</span>
-          <span className="font-bold text-emerald-400">฿{item.totalCost.toFixed(2)}</span>
+          <span className="font-semibold text-emerald-400 font-mono">
+            <span className="text-emerald-500/70 font-normal mr-0.5">฿</span>
+            {item.totalCost.toFixed(2)}
+          </span>
         </div>
         <div className="flex justify-between space-x-4">
           <span className="text-slate-400">จำนวนบันทึก:</span>
