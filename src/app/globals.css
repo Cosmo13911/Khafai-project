@@ -28,6 +28,21 @@ body {
   }
 }
 
+@keyframes staggerHide {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+}
+
 .animate-stagger {
   animation: staggerReveal 220ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+.animate-stagger-hide {
+  animation: staggerHide 160ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
