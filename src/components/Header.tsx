@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Zap, Settings, RefreshCw, LogIn, LogOut, ChevronDown, FlaskConical } from "lucide-react";
+import { Settings, RefreshCw, LogIn, LogOut, ChevronDown, FlaskConical } from "lucide-react";
 import { UserProfile } from "@/types";
 import { useGoogleAuth } from "@/context/GoogleAuthContext";
+import { KhafaiLogo } from "./KhafaiLogo";
 
 interface HeaderProps {
   user: UserProfile;
@@ -38,10 +39,10 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
-        {/* Left Side: Minimal 2D Zap Logo + App Name */}
+        {/* Left Side: Khafai Brand Logo + App Name */}
         <div className="flex items-center space-x-2.5">
-          <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center">
-            <Zap className="w-5 h-5 text-blue-600 fill-blue-600/10" />
+          <div className="w-8 h-8 flex items-center justify-center">
+            <KhafaiLogo className="w-8 h-8 drop-shadow-xs" />
           </div>
           <h1 className="text-lg font-semibold text-slate-900 tracking-tight">
             Khafai
