@@ -138,7 +138,7 @@ export const CustomDatePickerPopover: React.FC<CustomDatePickerPopoverProps> = (
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-xl p-4 w-72 z-50 text-slate-800 animate-in fade-in zoom-in-95 duration-150">
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-xl p-4 w-[312px] z-50 text-slate-800 animate-in fade-in zoom-in-95 duration-150">
       {/* Navigation Header */}
       <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-100">
         <button
@@ -162,8 +162,8 @@ export const CustomDatePickerPopover: React.FC<CustomDatePickerPopoverProps> = (
         </button>
       </div>
 
-      {/* Weekday Names */}
-      <div className="grid grid-cols-7 text-center text-[11px] font-bold text-slate-400 mb-1">
+      {/* 7-Column Weekday Headers (อาทิตย์ - เสาร์) */}
+      <div className="grid grid-cols-7 text-center text-[11px] font-bold text-slate-400 mb-2 w-full">
         <span>อา</span>
         <span>จ</span>
         <span>อ</span>
@@ -173,8 +173,8 @@ export const CustomDatePickerPopover: React.FC<CustomDatePickerPopoverProps> = (
         <span>ส</span>
       </div>
 
-      {/* Calendar Grid */}
-      <div className="grid grid-cols-7 gap-y-1 my-1">
+      {/* 7-Column Calendar Grid */}
+      <div className="grid grid-cols-7 gap-y-1 my-1 w-full">
         {calendarDays.map((item, idx) => {
           const isStart = isSelectedStart(item.dateStr);
           const isEnd = isSelectedEnd(item.dateStr);
@@ -196,11 +196,11 @@ export const CustomDatePickerPopover: React.FC<CustomDatePickerPopoverProps> = (
           }
 
           return (
-            <div key={idx} className="flex items-center justify-center h-8">
+            <div key={idx} className="flex items-center justify-center w-full h-8">
               <button
                 disabled={!item.isCurrentMonth}
                 onClick={() => handleDateClick(item.dateStr)}
-                className={`w-7 h-7 flex items-center justify-center text-xs transition-colors ${cellBgClass} ${textClass}`}
+                className={`w-8 h-8 flex items-center justify-center text-xs transition-colors ${cellBgClass} ${textClass}`}
               >
                 {item.dayNumber}
               </button>
