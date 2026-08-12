@@ -108,7 +108,7 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
                   className="fixed inset-0 z-40"
                   onClick={() => setIsExportMenuOpen(false)}
                 />
-                <div className="absolute right-0 top-full mt-1.5 w-60 bg-white rounded-xl border border-slate-200 shadow-xl p-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+                <div className="absolute right-0 top-full mt-1.5 w-60 max-w-[calc(100vw-2rem)] bg-white rounded-xl border border-slate-200 shadow-xl p-1.5 z-50 origin-top-right animate-in fade-in zoom-in-95 duration-150">
                   <button
                     onClick={() => {
                       setIsExportMenuOpen(false);
