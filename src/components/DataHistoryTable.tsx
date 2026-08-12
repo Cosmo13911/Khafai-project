@@ -259,16 +259,16 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="bg-slate-50 text-slate-600 font-bold uppercase tracking-wider border-b border-slate-200">
-                    <th className="py-3 px-3 text-left w-1/6">วันที่บันทึก</th>
-                    <th className="py-3 px-3 text-right w-1/6">เลขมิเตอร์</th>
-                    <th className="py-3 px-3 text-right w-1/6">หน่วยที่ใช้</th>
-                    <th className="py-3 px-3 text-right w-1/6">ยอดค่าไฟ (บาท)</th>
-                    <th className="py-3 px-3 text-left pl-6 w-1/4">หมายเหตุ</th>
-                    <th className="py-3 px-3 text-center w-1/6">จัดการ</th>
+                    <th className="py-3.5 px-3 text-left w-[18%] whitespace-nowrap">วันที่บันทึก</th>
+                    <th className="py-3.5 px-3 text-right w-[18%] whitespace-nowrap">เลขมิเตอร์</th>
+                    <th className="py-3.5 px-3 text-right w-[16%] whitespace-nowrap">หน่วยที่ใช้</th>
+                    <th className="py-3.5 px-3 text-right w-[20%] whitespace-nowrap">ยอดค่าไฟ (บาท)</th>
+                    <th className="py-3.5 px-3 text-left pl-6 w-[18%] whitespace-nowrap">หมายเหตุ</th>
+                    <th className="py-3.5 px-3 text-center w-[10%] whitespace-nowrap">จัดการ</th>
                   </tr>
                 </thead>
               </table>
-              <div className="max-h-[420px] overflow-y-auto no-scrollbar">
+              <div className="max-h-[380px] overflow-y-auto no-scrollbar">
                 <table className="w-full text-left text-xs border-collapse">
                   <tbody
                     key={timeFilter}
@@ -281,52 +281,52 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
                         style={{ animationDelay: `${index * 35}ms` }}
                         className="hover:bg-slate-50/80 transition-colors group animate-stagger"
                       >
-                        <td className="py-3 px-3 text-left font-semibold text-slate-900 w-1/6">
+                        <td className="py-3 px-3 text-left font-semibold text-slate-900 w-[18%] whitespace-nowrap">
                           {log.Record_Date}
                         </td>
-                        <td className="py-3 px-3 text-right font-mono font-bold text-slate-800 w-1/6">
+                        <td className="py-3 px-3 text-right font-mono font-bold text-slate-800 w-[18%] whitespace-nowrap">
                           {log.Meter_Reading.toLocaleString()}
                         </td>
-                        <td className="py-3 px-3 text-right w-1/6">
+                        <td className="py-3 px-3 text-right w-[16%] whitespace-nowrap">
                           {log.Is_New_Meter ? (
-                            <span className="text-slate-400 font-medium">0 kWh</span>
+                            <span className="text-slate-400 font-medium font-mono">0 kWh</span>
                           ) : (
-                            <span className="font-bold text-blue-600">
+                            <span className="font-bold text-blue-600 font-mono">
                               {log.Units_Used} kWh
                             </span>
                           )}
                         </td>
-                        <td className="py-3 px-3 text-right w-1/6">
+                        <td className="py-3 px-3 text-right w-[20%] whitespace-nowrap">
                           {log.Is_New_Meter || log.Total_Cost === 0 ? (
-                            <span className="text-slate-400 font-medium">฿0.00</span>
+                            <span className="text-slate-400 font-medium font-mono">฿0.00</span>
                           ) : (
-                            <span className="font-bold text-slate-900">
+                            <span className="font-bold text-slate-900 font-mono">
                               ฿{log.Total_Cost.toFixed(2)}
                             </span>
                           )}
                         </td>
-                        <td className="py-3 px-3 text-left pl-6 w-1/4">
+                        <td className="py-3 px-3 text-left pl-6 w-[18%] whitespace-nowrap">
                           {log.Is_New_Meter ? (
-                            <span className="inline-flex items-center text-[11px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded-full">
-                              <Info className="w-3 h-3 mr-1 text-blue-500" />
+                            <span className="inline-flex items-center text-[11px] font-bold text-blue-700 bg-blue-50 border border-blue-200/80 px-2.5 py-0.5 rounded-full whitespace-nowrap">
+                              <Info className="w-3 h-3 mr-1 text-blue-500 shrink-0" />
                               รอบมิเตอร์ใหม่
                             </span>
                           ) : (
                             <span className="text-slate-400">-</span>
                           )}
                         </td>
-                        <td className="py-3 px-3 text-center w-1/6">
-                          <div className="flex items-center justify-center space-x-1.5">
+                        <td className="py-3 px-3 text-center w-[10%] whitespace-nowrap">
+                          <div className="flex items-center justify-center space-x-3">
                             <button
                               onClick={() => onOpenEditModal(log)}
-                              className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer min-h-[38px] min-w-[38px]"
+                              className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer min-h-[36px] min-w-[36px]"
                               title="แก้ไขรายการ"
                             >
                               <Pencil className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => onConfirmDelete(log)}
-                              className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer min-h-[38px] min-w-[38px]"
+                              className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer min-h-[36px] min-w-[36px]"
                               title="ลบรายการ"
                             >
                               <Trash2 className="w-4 h-4" />
