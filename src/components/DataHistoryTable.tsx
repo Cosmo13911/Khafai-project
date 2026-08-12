@@ -157,54 +157,53 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
         </div>
       </div>
 
-      {/* Filter Controls: Horizontal Scrollable Pills */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-2 scrollbar-none mb-3 border-b border-slate-100/60">
-        <button
-          onClick={() => setTimeFilter("this_week")}
-          className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-            timeFilter === "this_week"
-              ? "bg-blue-600 text-white shadow-xs"
-              : "bg-slate-100 hover:bg-slate-200 text-slate-600"
-          }`}
-        >
-          สัปดาห์นี้
-        </button>
+      {/* Filter Controls Bar Container */}
+      <div className="relative mb-3 border-b border-slate-100/60 pb-2">
+        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+          <button
+            onClick={() => setTimeFilter("this_week")}
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+              timeFilter === "this_week"
+                ? "bg-blue-600 text-white shadow-xs"
+                : "bg-slate-100 hover:bg-slate-200 text-slate-600"
+            }`}
+          >
+            สัปดาห์นี้
+          </button>
 
-        <button
-          onClick={() => setTimeFilter("this_month")}
-          className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-            timeFilter === "this_month"
-              ? "bg-blue-600 text-white shadow-xs"
-              : "bg-slate-100 hover:bg-slate-200 text-slate-600"
-          }`}
-        >
-          เดือนนี้
-        </button>
+          <button
+            onClick={() => setTimeFilter("this_month")}
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+              timeFilter === "this_month"
+                ? "bg-blue-600 text-white shadow-xs"
+                : "bg-slate-100 hover:bg-slate-200 text-slate-600"
+            }`}
+          >
+            เดือนนี้
+          </button>
 
-        <button
-          onClick={() => setTimeFilter("this_year")}
-          className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-            timeFilter === "this_year"
-              ? "bg-blue-600 text-white shadow-xs"
-              : "bg-slate-100 hover:bg-slate-200 text-slate-600"
-          }`}
-        >
-          ปีนี้
-        </button>
+          <button
+            onClick={() => setTimeFilter("this_year")}
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+              timeFilter === "this_year"
+                ? "bg-blue-600 text-white shadow-xs"
+                : "bg-slate-100 hover:bg-slate-200 text-slate-600"
+            }`}
+          >
+            ปีนี้
+          </button>
 
-        <button
-          onClick={() => setTimeFilter("all")}
-          className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-            timeFilter === "all"
-              ? "bg-blue-600 text-white shadow-xs"
-              : "bg-slate-100 hover:bg-slate-200 text-slate-600"
-          }`}
-        >
-          ทั้งหมด
-        </button>
+          <button
+            onClick={() => setTimeFilter("all")}
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+              timeFilter === "all"
+                ? "bg-blue-600 text-white shadow-xs"
+                : "bg-slate-100 hover:bg-slate-200 text-slate-600"
+            }`}
+          >
+            ทั้งหมด
+          </button>
 
-        {/* Custom Date Range Floating Button & Popup */}
-        <div className="relative inline-block">
           <button
             onClick={() => {
               setTimeFilter("custom");
@@ -219,28 +218,28 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
             <Calendar className="w-3.5 h-3.5" />
             <span>เลือกช่วงเวลา</span>
           </button>
-
-          {/* Floating Popup attached right under the button */}
-          {timeFilter === "custom" && showCustomInputs && (
-            <>
-              {/* Click outside backdrop overlay */}
-              <div
-                className="fixed inset-0 z-40"
-                onClick={() => setShowCustomInputs(false)}
-              />
-              <div className="absolute left-0 sm:right-0 sm:left-auto top-full mt-2 z-50 animate-in fade-in zoom-in-95 duration-150">
-                <CustomDatePickerPopover
-                  startDate={customStartDate}
-                  endDate={customEndDate}
-                  onChange={(start, end) => {
-                    setCustomStartDate(start);
-                    setCustomEndDate(end);
-                  }}
-                />
-              </div>
-            </>
-          )}
         </div>
+
+        {/* Floating Custom Date Range Popup (Outside overflow-x-auto container!) */}
+        {timeFilter === "custom" && showCustomInputs && (
+          <>
+            {/* Click outside backdrop overlay */}
+            <div
+              className="fixed inset-0 z-40"
+              onClick={() => setShowCustomInputs(false)}
+            />
+            <div className="absolute right-0 top-full mt-2 z-50 animate-in fade-in zoom-in-95 duration-150">
+              <CustomDatePickerPopover
+                startDate={customStartDate}
+                endDate={customEndDate}
+                onChange={(start, end) => {
+                  setCustomStartDate(start);
+                  setCustomEndDate(end);
+                }}
+              />
+            </div>
+          </>
+        )}
       </div>
 
       {filteredLogs.length === 0 ? (
