@@ -69,7 +69,7 @@ export const MonthlyTrendChart: React.FC<MonthlyTrendChartProps> = memo(({ data 
       ) : (
         <div className="w-full h-64 sm:h-72">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+            <BarChart data={data} margin={{ top: 10, right: 15, left: 15, bottom: 0 }}>
               <XAxis
                 dataKey="monthName"
                 axisLine={false}
@@ -77,15 +77,16 @@ export const MonthlyTrendChart: React.FC<MonthlyTrendChartProps> = memo(({ data 
                 tick={{ fill: "#64748b", fontSize: 12 }}
               />
               <YAxis
+                width={65}
                 axisLine={false}
                 tickLine={false}
                 tick={{ fill: "#64748b", fontSize: 11 }}
-                tickFormatter={(val) => `฿${val}`}
+                tickFormatter={(val) => `฿${Number(val).toLocaleString()}`}
               />
               <Tooltip content={<CustomTooltip />} cursor={{ fill: "#f1f5f9" }} />
               <Bar
                 dataKey="totalCost"
-                fill="#3b82f6"
+                fill="#3B82F6"
                 radius={[6, 6, 0, 0]}
                 maxBarSize={48}
               />

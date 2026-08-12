@@ -26,21 +26,21 @@ export const SummaryCards: React.FC<SummaryCardsProps> = memo(({ summary }) => {
         </div>
 
         <div>
-          <div className="flex items-baseline space-x-2">
+          <div className="flex items-baseline space-x-1.5">
             <span suppressHydrationWarning className="text-3xl font-extrabold text-slate-900 tracking-tight">
               {summary.currentMonthUnits.toLocaleString()}
             </span>
-            <span className="text-sm font-semibold text-slate-500">หน่วย (kWh)</span>
+            <span className="text-sm font-normal text-slate-500 align-baseline">หน่วย (kWh)</span>
           </div>
 
           <div className="mt-3 flex items-center text-xs">
             {summary.unitsPercentChange !== null ? (
               <span
                 suppressHydrationWarning
-                className={`flex items-center font-bold px-2 py-0.5 rounded-full ${
+                className={`flex items-center font-bold px-2.5 py-0.5 rounded-full ${
                   isUnitsUp
-                    ? "bg-rose-50 text-rose-600 border border-rose-100"
-                    : "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                    ? "bg-rose-50 text-rose-600 border border-rose-200/60"
+                    : "bg-emerald-50 text-emerald-600 border border-emerald-200/60"
                 }`}
               >
                 {isUnitsUp ? (
@@ -71,24 +71,24 @@ export const SummaryCards: React.FC<SummaryCardsProps> = memo(({ summary }) => {
 
         <div>
           <div className="flex items-baseline space-x-1">
-            <span className="text-sm font-bold text-slate-600">฿</span>
+            <span className="text-base font-bold text-slate-700">฿</span>
             <span suppressHydrationWarning className="text-3xl font-extrabold text-slate-900 tracking-tight">
               {summary.currentMonthCost.toLocaleString(undefined, {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
               })}
             </span>
-            <span className="text-sm font-semibold text-slate-500 ml-1">บาท</span>
+            <span className="text-sm font-normal text-slate-500 ml-1 align-baseline">บาท</span>
           </div>
 
           <div className="mt-3 flex items-center text-xs">
             {summary.costPercentChange !== null ? (
               <span
                 suppressHydrationWarning
-                className={`flex items-center font-bold px-2 py-0.5 rounded-full ${
+                className={`flex items-center font-bold px-2.5 py-0.5 rounded-full ${
                   isCostUp
-                    ? "bg-rose-50 text-rose-600 border border-rose-100"
-                    : "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                    ? "bg-rose-50 text-rose-600 border border-rose-200/60"
+                    : "bg-emerald-50 text-emerald-600 border border-emerald-200/60"
                 }`}
               >
                 {isCostUp ? (
