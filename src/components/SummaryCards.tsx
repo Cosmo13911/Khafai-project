@@ -1,7 +1,7 @@
 "use client";
 
 import React, { memo } from "react";
-import { TrendingUp, TrendingDown, Zap, Banknote, Layers } from "lucide-react";
+import { TrendingUp, TrendingDown, Zap, Banknote, Gauge } from "lucide-react";
 import { SummaryData } from "@/types";
 
 interface SummaryCardsProps {
@@ -106,29 +106,31 @@ export const SummaryCards: React.FC<SummaryCardsProps> = memo(({ summary }) => {
         </div>
       </div>
 
-      {/* Card 3: Tariff Rate & Cycles */}
+      {/* Card 3: Latest Meter Reading & Cycle */}
       <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex flex-col justify-between transition-all hover:shadow-md sm:col-span-2 lg:col-span-1">
         <div className="flex items-center justify-between mb-3">
           <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            อัตราค่าไฟ & รอบมิเตอร์
+            เลขมิเตอร์ล่าสุด
           </span>
           <div className="w-9 h-9 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600">
-            <Layers className="w-5 h-5" />
+            <Gauge className="w-5 h-5" />
           </div>
         </div>
 
         <div>
           <div className="flex items-baseline space-x-2">
-            <span suppressHydrationWarning className="text-3xl font-extrabold text-blue-600 tracking-tight">
-              ฿{summary.currentRate.toFixed(2)}
+            <span suppressHydrationWarning className="text-3xl font-extrabold text-slate-900 tracking-tight font-mono">
+              {summary.latestMeterReading.toLocaleString()}
             </span>
-            <span className="text-sm font-semibold text-slate-500">บาท / หน่วย</span>
+            <span className="text-sm font-semibold text-slate-500">หน่วย</span>
           </div>
 
           <div className="mt-3 flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100">
-            <span>จำนวนรอบมิเตอร์ทั้งหมด:</span>
-            <span suppressHydrationWarning className="font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
-              {summary.totalCyclesCount} รอบ
+            <span suppressHydrationWarning className="text-slate-400">
+              {summary.latestRecordDate !== "-" ? `บันทึกเมื่อ ${summary.latestRecordDate}` : "ยังไม่มีข้อมูล"}
+            </span>
+            <span suppressHydrationWarning className="font-bold text-purple-700 bg-purple-50 px-2.5 py-0.5 rounded-full border border-purple-200/80">
+              รอบที่ {summary.totalCyclesCount}
             </span>
           </div>
         </div>

@@ -72,7 +72,7 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
   }, [filteredLogs.length, logs.length, timeFilter]);
 
   return (
-    <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex flex-col h-full min-h-[440px] transition-all duration-300 ease-out">
+    <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex flex-col transition-all duration-300 ease-out">
       {/* Header section with Actions */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-2 pb-3 border-b border-slate-100">
         <div className="flex items-center space-x-2">
@@ -238,7 +238,7 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
       </div>
 
       <div
-        className={`flex-1 flex flex-col min-h-[340px] transition-all duration-300 ease-out ${
+        className={`flex-1 flex flex-col transition-all duration-300 ease-out ${
           isFilterChanging
             ? "opacity-20 scale-[0.99] blur-[0.5px]"
             : "opacity-100 scale-100 blur-none"

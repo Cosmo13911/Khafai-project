@@ -51,6 +51,8 @@ export interface SummaryData {
   totalCyclesCount: number;
   currentMonthName: string;
   prevMonthName: string;
+  latestMeterReading: number;
+  latestRecordDate: string;
 }
 
 export interface MonthlyChartData {

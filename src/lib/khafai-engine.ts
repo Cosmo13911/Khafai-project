@@ -210,6 +210,10 @@ export function calculateSummaryData(
   const currentMonthName = `${monthNamesThai[now.getMonth()]} ${curYear + 543}`;
   const prevMonthName = `${monthNamesThai[prevDate.getMonth()]} ${prevYear + 543}`;
 
+  const latestLog = sorted.length > 0 ? sorted[sorted.length - 1] : null;
+  const latestMeterReading = latestLog ? latestLog.Meter_Reading : 0;
+  const latestRecordDate = latestLog ? latestLog.Record_Date : "-";
+
   return {
     currentMonthUnits: Number(currentMonthUnits.toFixed(1)),
     currentMonthCost: Number(currentMonthCost.toFixed(2)),
@@ -221,11 +225,14 @@ export function calculateSummaryData(
     totalCyclesCount: Math.max(1, totalCyclesCount),
     currentMonthName,
     prevMonthName,
+    latestMeterReading,
+    latestRecordDate,
   };
 }
 
 /**
  * Formats logs into monthly chart data for Recharts Bar Chart
+ * Ensures a 6-month trailing window baseline for structural visual balance.
  */
 export function calculateMonthlyChartData(logs: MeterLog[]): MonthlyChartData[] {
   const sorted = sortLogs(logs);
@@ -247,19 +254,33 @@ export function calculateMonthlyChartData(logs: MeterLog[]): MonthlyChartData[] 
     monthlyMap[monthKey].logCount += 1;
   });
 
-  const keys = Object.keys(monthlyMap).sort();
+  // Ensure trailing 6 months exist in chart data for a complete trend matrix
+  const now = new Date();
+  const trailingMonths: string[] = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const mKey = `${yyyy}-${mm}`;
+    trailingMonths.push(mKey);
+  }
 
-  return keys.map((key) => {
+  // Combine log month keys with trailing 6 months
+  const allKeys = Array.from(new Set([...trailingMonths, ...Object.keys(monthlyMap)])).sort();
+
+  return allKeys.map((key) => {
     const [year, month] = key.split("-");
     const thaiYear = (parseInt(year, 10) + 543).toString().substring(2);
     const monthName = `${monthShortNamesThai[month] || month} '${thaiYear}`;
 
+    const itemData = monthlyMap[key] || { totalUnits: 0, totalCost: 0, logCount: 0 };
+
     return {
       monthKey: key,
       monthName,
-      totalUnits: Number(monthlyMap[key].totalUnits.toFixed(1)),
-      totalCost: Number(monthlyMap[key].totalCost.toFixed(2)),
-      logCount: monthlyMap[key].logCount,
+      totalUnits: Number(itemData.totalUnits.toFixed(1)),
+      totalCost: Number(itemData.totalCost.toFixed(2)),
+      logCount: itemData.logCount,
     };
   });
 }
