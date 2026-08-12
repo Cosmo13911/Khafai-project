@@ -256,20 +256,20 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
           <>
             {/* Desktop View: Fixed Header + Isolated Scrollable Table Body */}
             <div className="hidden md:block overflow-hidden rounded-xl border border-slate-200">
-              <table className="w-full text-left text-xs border-collapse">
+              <table className="w-full text-left text-xs border-collapse table-fixed">
                 <thead>
                   <tr className="bg-slate-50 text-slate-600 font-bold uppercase tracking-wider border-b border-slate-200">
-                    <th className="py-3.5 px-3 text-left w-[18%] whitespace-nowrap">วันที่บันทึก</th>
-                    <th className="py-3.5 px-3 text-right w-[18%] whitespace-nowrap">เลขมิเตอร์</th>
-                    <th className="py-3.5 px-3 text-right w-[16%] whitespace-nowrap">หน่วยที่ใช้</th>
-                    <th className="py-3.5 px-3 text-right w-[20%] whitespace-nowrap">ยอดค่าไฟ (บาท)</th>
-                    <th className="py-3.5 px-3 text-left pl-6 w-[18%] whitespace-nowrap">หมายเหตุ</th>
-                    <th className="py-3.5 px-3 text-center w-[10%] whitespace-nowrap">จัดการ</th>
+                    <th className="py-3.5 px-3 text-left w-[110px] whitespace-nowrap">วันที่บันทึก</th>
+                    <th className="py-3.5 px-3 text-right w-[100px] whitespace-nowrap">เลขมิเตอร์</th>
+                    <th className="py-3.5 px-3 text-right w-[100px] whitespace-nowrap">หน่วยที่ใช้</th>
+                    <th className="py-3.5 px-3 text-right w-[130px] whitespace-nowrap">ยอดค่าไฟ (บาท)</th>
+                    <th className="py-3.5 px-3 text-left pl-4 w-auto whitespace-nowrap">หมายเหตุ</th>
+                    <th className="py-3.5 px-3 text-center w-[80px] whitespace-nowrap">จัดการ</th>
                   </tr>
                 </thead>
               </table>
               <div className="max-h-[380px] overflow-y-auto no-scrollbar">
-                <table className="w-full text-left text-xs border-collapse">
+                <table className="w-full text-left text-xs border-collapse table-fixed">
                   <tbody
                     key={timeFilter}
                     suppressHydrationWarning
@@ -281,13 +281,13 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
                         style={{ animationDelay: `${index * 35}ms` }}
                         className="hover:bg-slate-50/80 transition-colors group animate-stagger"
                       >
-                        <td className="py-3 px-3 text-left font-semibold text-slate-900 w-[18%] whitespace-nowrap">
+                        <td className="py-3 px-3 text-left font-semibold text-slate-900 w-[110px] whitespace-nowrap">
                           {log.Record_Date}
                         </td>
-                        <td className="py-3 px-3 text-right font-mono font-bold text-slate-800 w-[18%] whitespace-nowrap">
+                        <td className="py-3 px-3 text-right font-mono font-bold text-slate-800 w-[100px] whitespace-nowrap">
                           {log.Meter_Reading.toLocaleString()}
                         </td>
-                        <td className="py-3 px-3 text-right w-[16%] whitespace-nowrap">
+                        <td className="py-3 px-3 text-right w-[100px] whitespace-nowrap">
                           {log.Is_New_Meter ? (
                             <span className="text-slate-400 font-medium font-mono">0 kWh</span>
                           ) : (
@@ -296,7 +296,7 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
                             </span>
                           )}
                         </td>
-                        <td className="py-3 px-3 text-right w-[20%] whitespace-nowrap">
+                        <td className="py-3 px-3 text-right w-[130px] whitespace-nowrap">
                           {log.Is_New_Meter || log.Total_Cost === 0 ? (
                             <span className="text-slate-400 font-medium font-mono">฿0.00</span>
                           ) : (
@@ -305,7 +305,7 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
                             </span>
                           )}
                         </td>
-                        <td className="py-3 px-3 text-left pl-6 w-[18%] whitespace-nowrap">
+                        <td className="py-3 px-3 text-left pl-4 w-auto whitespace-nowrap">
                           {log.Is_New_Meter ? (
                             <span className="inline-flex items-center text-[11px] font-bold text-blue-700 bg-blue-50 border border-blue-200/80 px-2.5 py-0.5 rounded-full whitespace-nowrap">
                               <Info className="w-3 h-3 mr-1 text-blue-500 shrink-0" />
@@ -315,21 +315,21 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
                             <span className="text-slate-400">-</span>
                           )}
                         </td>
-                        <td className="py-3 px-3 text-center w-[10%] whitespace-nowrap">
-                          <div className="flex items-center justify-center space-x-3">
+                        <td className="py-3 px-3 text-center w-[80px] whitespace-nowrap">
+                          <div className="flex items-center justify-center space-x-2">
                             <button
                               onClick={() => onOpenEditModal(log)}
-                              className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer min-h-[36px] min-w-[36px]"
+                              className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer min-h-[32px] min-w-[32px]"
                               title="แก้ไขรายการ"
                             >
-                              <Pencil className="w-4 h-4" />
+                              <Pencil className="w-3.5 h-3.5" />
                             </button>
                             <button
                               onClick={() => onConfirmDelete(log)}
-                              className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer min-h-[36px] min-w-[36px]"
+                              className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer min-h-[32px] min-w-[32px]"
                               title="ลบรายการ"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         </td>
