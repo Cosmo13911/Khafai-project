@@ -272,10 +272,11 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
                   suppressHydrationWarning
                   className="divide-y divide-slate-100 animate-in fade-in slide-in-from-bottom-1 duration-200 ease-out"
                 >
-                  {filteredLogs.map((log) => (
+                  {filteredLogs.map((log, index) => (
                     <tr
                       key={log.Log_ID}
-                      className="hover:bg-slate-50/80 transition-colors group"
+                      style={{ animationDelay: `${index * 35}ms` }}
+                      className="hover:bg-slate-50/80 transition-colors group animate-stagger"
                     >
                       <td className="py-3 px-3 text-left font-semibold text-slate-900">
                         {log.Record_Date}
@@ -339,12 +340,13 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
             <div
               key={timeFilter}
               suppressHydrationWarning
-              className="block md:hidden space-y-3 animate-in fade-in slide-in-from-bottom-1 duration-200 ease-out"
+              className="block md:hidden space-y-3"
             >
-              {filteredLogs.map((log) => (
+              {filteredLogs.map((log, index) => (
                 <div
                   key={log.Log_ID}
-                  className="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-2 relative"
+                  style={{ animationDelay: `${index * 35}ms` }}
+                  className="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-2 relative animate-stagger"
                 >
                   <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
                     <span className="text-xs font-bold text-slate-900">
