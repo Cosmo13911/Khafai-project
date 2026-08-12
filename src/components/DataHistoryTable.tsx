@@ -89,7 +89,7 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
         </div>
 
         {/* Action Controls: Export Dropdown (Secondary) & Primary CTA */}
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2 ml-auto">
           {/* Single Split Export Dropdown */}
           <div className="relative">
             <button
