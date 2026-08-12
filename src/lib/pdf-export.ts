@@ -159,7 +159,9 @@ export function exportToPDF(logs: MeterLog[], user: UserProfile): void {
     cardY + 17
   );
 
-  // Card 2: Total Energy Consumed
+  // Card 2: Total Energy Consumed (White Background)
+  doc.setFillColor(255, 255, 255); // bg-white
+  doc.setDrawColor(226, 232, 240);
   doc.roundedRect(76, cardY, cardW, cardH, 2, 2, "FD");
 
   doc.setFontSize(7.5);
@@ -179,7 +181,9 @@ export function exportToPDF(logs: MeterLog[], user: UserProfile): void {
     cardY + 17
   );
 
-  // Card 3: Recorded Entries
+  // Card 3: Recorded Entries (White Background)
+  doc.setFillColor(255, 255, 255); // bg-white
+  doc.setDrawColor(226, 232, 240);
   doc.roundedRect(138, cardY, cardW, cardH, 2, 2, "FD");
 
   doc.setFontSize(7.5);
