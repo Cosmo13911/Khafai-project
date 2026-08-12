@@ -254,86 +254,90 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
           </div>
         ) : (
           <>
-            {/* Desktop View: Table Format */}
-            <div className="hidden md:block overflow-x-auto">
+            {/* Desktop View: Fixed Header + Isolated Scrollable Table Body */}
+            <div className="hidden md:block overflow-hidden rounded-xl border border-slate-200">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="bg-slate-50 text-slate-600 font-bold uppercase tracking-wider border-b border-slate-200">
-                    <th className="py-3 px-3 text-left rounded-l-lg">วันที่บันทึก</th>
-                    <th className="py-3 px-3 text-right">เลขมิเตอร์</th>
-                    <th className="py-3 px-3 text-right">หน่วยที่ใช้</th>
-                    <th className="py-3 px-3 text-right">ยอดค่าไฟ (บาท)</th>
-                    <th className="py-3 px-3 text-left pl-6">หมายเหตุ</th>
-                    <th className="py-3 px-3 text-center rounded-r-lg">จัดการ</th>
+                    <th className="py-3 px-3 text-left w-1/6">วันที่บันทึก</th>
+                    <th className="py-3 px-3 text-right w-1/6">เลขมิเตอร์</th>
+                    <th className="py-3 px-3 text-right w-1/6">หน่วยที่ใช้</th>
+                    <th className="py-3 px-3 text-right w-1/6">ยอดค่าไฟ (บาท)</th>
+                    <th className="py-3 px-3 text-left pl-6 w-1/4">หมายเหตุ</th>
+                    <th className="py-3 px-3 text-center w-1/6">จัดการ</th>
                   </tr>
                 </thead>
-                <tbody
-                  key={timeFilter}
-                  suppressHydrationWarning
-                  className="divide-y divide-slate-100 animate-in fade-in slide-in-from-bottom-1 duration-200 ease-out"
-                >
-                  {filteredLogs.map((log, index) => (
-                    <tr
-                      key={log.Log_ID}
-                      style={{ animationDelay: `${index * 35}ms` }}
-                      className="hover:bg-slate-50/80 transition-colors group animate-stagger"
-                    >
-                      <td className="py-3 px-3 text-left font-semibold text-slate-900">
-                        {log.Record_Date}
-                      </td>
-                      <td className="py-3 px-3 text-right font-mono font-bold text-slate-800">
-                        {log.Meter_Reading.toLocaleString()}
-                      </td>
-                      <td className="py-3 px-3 text-right">
-                        {log.Is_New_Meter ? (
-                          <span className="text-slate-400 font-medium">0 kWh</span>
-                        ) : (
-                          <span className="font-bold text-blue-600">
-                            {log.Units_Used} kWh
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3 px-3 text-right">
-                        {log.Is_New_Meter || log.Total_Cost === 0 ? (
-                          <span className="text-slate-400 font-medium">฿0.00</span>
-                        ) : (
-                          <span className="font-bold text-slate-900">
-                            ฿{log.Total_Cost.toFixed(2)}
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3 px-3 text-left pl-6">
-                        {log.Is_New_Meter ? (
-                          <span className="inline-flex items-center text-[11px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded-full">
-                            <Info className="w-3 h-3 mr-1 text-blue-500" />
-                            รอบมิเตอร์ใหม่
-                          </span>
-                        ) : (
-                          <span className="text-slate-400">-</span>
-                        )}
-                      </td>
-                      <td className="py-3 px-3 text-center">
-                        <div className="flex items-center justify-center space-x-1.5">
-                          <button
-                            onClick={() => onOpenEditModal(log)}
-                            className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer min-h-[38px] min-w-[38px]"
-                            title="แก้ไขรายการ"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => onConfirmDelete(log)}
-                            className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer min-h-[38px] min-w-[38px]"
-                            title="ลบรายการ"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
               </table>
+              <div className="max-h-[420px] overflow-y-auto no-scrollbar">
+                <table className="w-full text-left text-xs border-collapse">
+                  <tbody
+                    key={timeFilter}
+                    suppressHydrationWarning
+                    className="divide-y divide-slate-100 animate-in fade-in slide-in-from-bottom-1 duration-200 ease-out"
+                  >
+                    {filteredLogs.map((log, index) => (
+                      <tr
+                        key={log.Log_ID}
+                        style={{ animationDelay: `${index * 35}ms` }}
+                        className="hover:bg-slate-50/80 transition-colors group animate-stagger"
+                      >
+                        <td className="py-3 px-3 text-left font-semibold text-slate-900 w-1/6">
+                          {log.Record_Date}
+                        </td>
+                        <td className="py-3 px-3 text-right font-mono font-bold text-slate-800 w-1/6">
+                          {log.Meter_Reading.toLocaleString()}
+                        </td>
+                        <td className="py-3 px-3 text-right w-1/6">
+                          {log.Is_New_Meter ? (
+                            <span className="text-slate-400 font-medium">0 kWh</span>
+                          ) : (
+                            <span className="font-bold text-blue-600">
+                              {log.Units_Used} kWh
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3 px-3 text-right w-1/6">
+                          {log.Is_New_Meter || log.Total_Cost === 0 ? (
+                            <span className="text-slate-400 font-medium">฿0.00</span>
+                          ) : (
+                            <span className="font-bold text-slate-900">
+                              ฿{log.Total_Cost.toFixed(2)}
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3 px-3 text-left pl-6 w-1/4">
+                          {log.Is_New_Meter ? (
+                            <span className="inline-flex items-center text-[11px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded-full">
+                              <Info className="w-3 h-3 mr-1 text-blue-500" />
+                              รอบมิเตอร์ใหม่
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">-</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-3 text-center w-1/6">
+                          <div className="flex items-center justify-center space-x-1.5">
+                            <button
+                              onClick={() => onOpenEditModal(log)}
+                              className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer min-h-[38px] min-w-[38px]"
+                              title="แก้ไขรายการ"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => onConfirmDelete(log)}
+                              className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer min-h-[38px] min-w-[38px]"
+                              title="ลบรายการ"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             {/* Mobile View: Card List Format */}
