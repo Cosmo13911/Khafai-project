@@ -24,20 +24,30 @@ interface GasResponse {
 }
 
 export async function GET(req: NextRequest) {
-  const userId = req.headers.get("x-user-id") || "google-sub-1029384756";
+  const userEmail = req.headers.get("x-user-email") || req.nextUrl.searchParams.get("email") || "";
+  const userId = req.headers.get("x-user-id") || userEmail || "";
+  const userName = req.headers.get("x-user-name") || req.nextUrl.searchParams.get("name") || "";
+  const userPicture = req.headers.get("x-user-picture") || "";
   const rateLimit = checkRateLimit(userId, "read");
 
-  let user = getUserProfile(userId);
+  let user = getUserProfile(userId, userEmail, userName, userPicture);
   let logs = getMeterLogs(userId);
   let isGasConnected = false;
 
   // Await real database fetch from Google Apps Script Web App
   try {
-    const gasRes = await callGasApi<GasResponse>("getMeterLogs", userId);
+    const gasRes = await callGasApi<GasResponse>("getMeterLogs", userId, {
+      Email: userEmail,
+      email: userEmail,
+      Name: userName,
+      name: userName,
+      Picture: userPicture,
+      picture: userPicture,
+    });
     if (gasRes?.success) {
       isGasConnected = true;
       if (gasRes.user) {
-        user = syncUserProfileFromGas(userId, gasRes.user);
+        user = syncUserProfileFromGas(userId, gasRes.user, userEmail, userName, userPicture);
       }
       if (Array.isArray(gasRes.logs)) {
         logs = syncMeterLogsFromGas(userId, gasRes.logs);
@@ -62,7 +72,10 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const userId = req.headers.get("x-user-id") || "google-sub-1029384756";
+  const userEmail = req.headers.get("x-user-email") || "";
+  const userId = req.headers.get("x-user-id") || userEmail || "";
+  const userName = req.headers.get("x-user-name") || "";
+  const userPicture = req.headers.get("x-user-picture") || "";
   const rateLimit = checkRateLimit(userId, "write");
 
   if (rateLimit.isLocked) {
@@ -110,7 +123,7 @@ export async function POST(req: NextRequest) {
     });
 
     let updatedLogs = getMeterLogs(userId);
-    let updatedUser = getUserProfile(userId);
+    let updatedUser = getUserProfile(userId, userEmail, userName, userPicture);
     let isGasConnected = false;
 
     // Direct synchronous call to Google Apps Script Web App database
@@ -119,6 +132,12 @@ export async function POST(req: NextRequest) {
         Record_Date: body.Record_Date,
         Meter_Reading: body.Meter_Reading,
         Is_New_Meter: body.Is_New_Meter,
+        Email: userEmail,
+        email: userEmail,
+        Name: userName,
+        name: userName,
+        Picture: userPicture,
+        picture: userPicture,
       });
 
       if (gasRes?.success && Array.isArray(gasRes.logs)) {

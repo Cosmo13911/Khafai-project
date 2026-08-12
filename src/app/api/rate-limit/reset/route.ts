@@ -3,7 +3,8 @@ import { resetUserRateLimit } from "@/lib/rate-limiter";
 import { resetUserDatabase } from "@/lib/database";
 
 export async function POST(req: NextRequest) {
-  const userId = req.headers.get("x-user-id") || "google-sub-1029384756";
+  const userEmail = req.headers.get("x-user-email") || "";
+  const userId = req.headers.get("x-user-id") || userEmail || "";
   
   try {
     const body = await req.json().catch(() => ({}));

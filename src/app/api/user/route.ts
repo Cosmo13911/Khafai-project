@@ -10,16 +10,26 @@ interface GasResponse {
 }
 
 export async function GET(req: NextRequest) {
-  const userId = req.headers.get("x-user-id") || "google-sub-1029384756";
+  const userEmail = req.headers.get("x-user-email") || "";
+  const userId = req.headers.get("x-user-id") || userEmail || "";
+  const userName = req.headers.get("x-user-name") || "";
+  const userPicture = req.headers.get("x-user-picture") || "";
   const rateLimit = checkRateLimit(userId, "read");
-  let user = getUserProfile(userId);
+  let user = getUserProfile(userId, userEmail, userName, userPicture);
   let isGasConnected = false;
 
   try {
-    const gasRes = await callGasApi<GasResponse>("getUser", userId);
+    const gasRes = await callGasApi<GasResponse>("getUser", userId, {
+      Email: userEmail,
+      email: userEmail,
+      Name: userName,
+      name: userName,
+      Picture: userPicture,
+      picture: userPicture,
+    });
     if (gasRes?.success && gasRes.user) {
       isGasConnected = true;
-      user = syncUserProfileFromGas(userId, gasRes.user);
+      user = syncUserProfileFromGas(userId, gasRes.user, userEmail, userName, userPicture);
     }
   } catch (err) {
     console.warn("GAS fetch error in user GET:", err);
@@ -34,7 +44,10 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const userId = req.headers.get("x-user-id") || "google-sub-1029384756";
+  const userEmail = req.headers.get("x-user-email") || "";
+  const userId = req.headers.get("x-user-id") || userEmail || "";
+  const userName = req.headers.get("x-user-name") || "";
+  const userPicture = req.headers.get("x-user-picture") || "";
   const rateLimit = checkRateLimit(userId, "write");
 
   if (rateLimit.isLocked) {
@@ -51,18 +64,28 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    let updatedUser = updateUserProfile(userId, body);
+    let updatedUser = updateUserProfile(userId, {
+      ...body,
+      Email: body.Email || userEmail,
+      Name: body.Name || userName,
+      Picture: body.Picture || userPicture,
+    });
     let isGasConnected = false;
 
     try {
       const gasRes = await callGasApi<GasResponse>("updateUser", userId, {
         Current_Rate_Per_Unit: body.Current_Rate_Per_Unit,
-        Email: body.Email,
+        Email: body.Email || userEmail,
+        email: body.Email || userEmail,
+        Name: body.Name || userName,
+        name: body.Name || userName,
+        Picture: body.Picture || userPicture,
+        picture: body.Picture || userPicture,
       });
 
       if (gasRes?.success && gasRes.user) {
         isGasConnected = true;
-        updatedUser = syncUserProfileFromGas(userId, gasRes.user);
+        updatedUser = syncUserProfileFromGas(userId, gasRes.user, userEmail, userName, userPicture);
       }
     } catch (err) {
       console.warn("GAS update error in user POST:", err);

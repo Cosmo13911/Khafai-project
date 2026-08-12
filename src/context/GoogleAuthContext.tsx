@@ -37,12 +37,23 @@ const GoogleAuthContext = createContext<GoogleAuthContextType>({
 });
 
 const DEFAULT_DEMO_USER: GoogleUserSession = {
-  User_ID: "google-sub-1029384756",
-  Email: "user@khafai.app",
-  Name: "Khafai User 1",
-  Picture: "https://lh3.googleusercontent.com/a/default-user=s96-c",
+  User_ID: "demo@khafai.app",
+  Email: "demo@khafai.app",
+  Name: "Demo User",
+  Picture: "https://ui-avatars.com/api/?name=Demo+User&background=2563eb&color=fff",
   isDemo: true,
 };
+
+function cleanEmailString(raw?: string): string {
+  let email = (raw || "").trim().toLowerCase();
+  if (email.endsWith("@khafai.app")) {
+    const stripped = email.replace(/@khafai\.app$/, "");
+    if (stripped.includes("@")) {
+      email = stripped;
+    }
+  }
+  return email;
+}
 
 export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [session, setSession] = useState<GoogleUserSession | null>(null);
@@ -60,12 +71,14 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
       if (stored) {
         const parsed: GoogleUserSession = JSON.parse(stored);
+        if (parsed.Email) parsed.Email = cleanEmailString(parsed.Email);
+        if (parsed.User_ID) parsed.User_ID = cleanEmailString(parsed.User_ID);
         setSession(parsed);
       } else {
-        setSession(DEFAULT_DEMO_USER);
+        setSession(null);
       }
     } catch {
-      setSession(DEFAULT_DEMO_USER);
+      setSession(null);
     } finally {
       setIsLoading(false);
     }
@@ -81,6 +94,9 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const saveSession = (newSession: GoogleUserSession | null) => {
+    if (newSession) {
+      newSession.Email = cleanEmailString(newSession.Email);
+    }
     setSession(newSession);
     if (newSession) {
       localStorage.setItem("khafai_google_session", JSON.stringify(newSession));
@@ -92,10 +108,11 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const loginWithCredential = (credential: string) => {
     try {
       const decoded = jwtDecode<GoogleJwtPayload>(credential);
+      const cleanEmail = decoded.email.trim().toLowerCase();
       const newSession: GoogleUserSession = {
         User_ID: decoded.sub,
-        Email: decoded.email,
-        Name: decoded.name || decoded.email.split("@")[0],
+        Email: cleanEmail,
+        Name: decoded.name || cleanEmail.split("@")[0],
         Picture: decoded.picture,
         idToken: credential,
         isDemo: false,
@@ -108,12 +125,10 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const loginWithCustomEmail = (email: string, name?: string) => {
     const cleanEmail = email.trim().toLowerCase();
-    // Generate deterministic Google Sub ID from email address
     const subHash = cleanEmail
       .split("")
       .reduce((acc, char) => (acc * 31 + char.charCodeAt(0)) % 10000000000, 1000000000);
     const userId = `google-sub-${subHash}`;
-
     const displayName = name || cleanEmail.split("@")[0];
     const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=2563eb&color=fff`;
 
@@ -128,9 +143,10 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const loginWithDemoAccount = (userId: string, email: string, name: string, picture?: string) => {
+    const cleanEmail = email.trim().toLowerCase();
     const demoSession: GoogleUserSession = {
-      User_ID: userId,
-      Email: email,
+      User_ID: cleanEmail || userId,
+      Email: cleanEmail || email,
       Name: name,
       Picture: picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=2563eb&color=fff`,
       isDemo: true,

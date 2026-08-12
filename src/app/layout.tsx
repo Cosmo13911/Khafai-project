@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Prompt, Inter } from "next/font/google";
+import { Providers } from "@/components/Providers";
 import "./globals.css";
 
 const promptFont = Prompt({
@@ -32,7 +33,7 @@ export default function RootLayout({
       className={`${promptFont.variable} ${interFont.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans bg-slate-50 text-slate-900">
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

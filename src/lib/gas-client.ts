@@ -24,10 +24,29 @@ export async function callGasApi<T = Record<string, unknown>>(
     ...extraParams,
   };
 
-  // Set action and user_id into searchParams for clean URL routing
+  // Set action, user_id, and email into searchParams for clean URL routing
   const urlObj = new URL(baseUrl);
   urlObj.searchParams.set("action", action);
   urlObj.searchParams.set("user_id", userId);
+  const emailVal = (extraParams.Email || extraParams.email || extraParams.user_email) as string;
+  if (emailVal) {
+    urlObj.searchParams.set("email", emailVal);
+    urlObj.searchParams.set("Email", emailVal);
+    urlObj.searchParams.set("user_email", emailVal);
+    urlObj.searchParams.set("User_Email", emailVal);
+    payload.email = emailVal;
+    payload.Email = emailVal;
+    payload.user_email = emailVal;
+  }
+  const nameVal = (extraParams.Name || extraParams.name || extraParams.user_name) as string;
+  if (nameVal) {
+    urlObj.searchParams.set("name", nameVal);
+    urlObj.searchParams.set("Name", nameVal);
+    urlObj.searchParams.set("user_name", nameVal);
+    urlObj.searchParams.set("User_Name", nameVal);
+    payload.name = nameVal;
+    payload.Name = nameVal;
+  }
 
   // Set 15s timeout controller to give GAS sufficient execution time for Google Sheets write & recalculation
   const controller = new AbortController();
@@ -40,6 +59,7 @@ export async function callGasApi<T = Record<string, unknown>>(
       headers: isGetAction ? undefined : { "Content-Type": "text/plain;charset=utf-8" },
       body: isGetAction ? undefined : JSON.stringify(payload),
       redirect: "follow",
+      cache: "no-store",
       signal: controller.signal,
     });
 

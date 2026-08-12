@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Settings, LogOut, ChevronDown } from "lucide-react";
 import { UserProfile } from "@/types";
 import { useGoogleAuth } from "@/context/GoogleAuthContext";
@@ -23,6 +24,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenGoogleLoginModal,
   isLoading,
 }) => {
+  const router = useRouter();
   const { session, logout } = useGoogleAuth();
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
   const [isDropdownClosing, setIsDropdownClosing] = useState<boolean>(false);
@@ -192,7 +194,7 @@ export const Header: React.FC<HeaderProps> = ({
                       onClick={() => {
                         closeDropdown(() => {
                           logout();
-                          onOpenGoogleLoginModal();
+                          router.push("/login");
                         });
                       }}
                       className="w-full flex items-center space-x-2.5 px-4 py-2 text-xs text-rose-600 hover:bg-rose-50 font-semibold transition-colors cursor-pointer text-left"

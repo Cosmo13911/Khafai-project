@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { GoogleAuthProvider, useGoogleAuth } from "@/context/GoogleAuthContext";
 import { UserProfile, MeterLog, SummaryData, MonthlyChartData, RateLimitStatus } from "@/types";
@@ -22,6 +23,7 @@ import {
   calculateMonthlyChartData,
   checkDeleteProtection,
 } from "@/lib/khafai-engine";
+import { sanitizeEmail } from "@/lib/database";
 
 interface LocalCachePayload {
   user: UserProfile;
@@ -31,9 +33,17 @@ interface LocalCachePayload {
 
 export function getLocalCache(userId: string): LocalCachePayload | null {
   if (typeof window === "undefined") return null;
+  const cleanId = sanitizeEmail(userId);
   try {
-    const raw = localStorage.getItem(`khafai_cache_${userId}`);
-    if (raw) return JSON.parse(raw);
+    const raw = localStorage.getItem(`khafai_cache_${cleanId}`);
+    if (raw) {
+      const parsed: LocalCachePayload = JSON.parse(raw);
+      if (parsed.user) {
+        parsed.user.Email = sanitizeEmail(parsed.user.Email, cleanId);
+        parsed.user.User_ID = sanitizeEmail(parsed.user.User_ID, cleanId);
+      }
+      return parsed;
+    }
   } catch {
     // Ignore error
   }
@@ -42,24 +52,43 @@ export function getLocalCache(userId: string): LocalCachePayload | null {
 
 export function saveLocalCache(userId: string, user: UserProfile, logs: MeterLog[]): void {
   if (typeof window === "undefined") return;
+  const cleanId = sanitizeEmail(userId);
   try {
+    const cleanUser = {
+      ...user,
+      User_ID: sanitizeEmail(user.User_ID, cleanId),
+      Email: sanitizeEmail(user.Email, cleanId),
+    };
     const payload: LocalCachePayload = {
-      user,
+      user: cleanUser,
       logs,
       updatedAt: Date.now(),
     };
-    localStorage.setItem(`khafai_cache_${userId}`, JSON.stringify(payload));
+    localStorage.setItem(`khafai_cache_${cleanId}`, JSON.stringify(payload));
   } catch {
     // Ignore error
   }
 }
 
 function KhafaiDashboardContent() {
-  const { session, isAuthenticated } = useGoogleAuth();
-  const currentUserId = session?.User_ID || "google-sub-1029384756";
-  const currentEmail = session?.Email || `${currentUserId}@khafai.app`;
+  const router = useRouter();
+  const { session, isAuthenticated, isLoading: isAuthLoading } = useGoogleAuth();
+  const currentUserId = session?.User_ID || "";
+  const currentEmail = session?.Email || "";
+  const currentName = session?.Name || "";
+  const currentPicture = session?.Picture || "";
 
   const [isMounted, setIsMounted] = useState<boolean>(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (isMounted && !isAuthLoading && !isAuthenticated) {
+      router.push("/login");
+    }
+  }, [isMounted, isAuthLoading, isAuthenticated, router]);
 
   const [user, setUser] = useState<UserProfile>({
     User_ID: currentUserId,
@@ -118,26 +147,24 @@ function KhafaiDashboardContent() {
   const [isGoogleLoginOpen, setIsGoogleLoginOpen] = useState<boolean>(false);
   const [isTestApiOpen, setIsTestApiOpen] = useState<boolean>(false);
 
-  // Read LocalStorage cache safely after initial mount to prevent hydration mismatch
+  // Read LocalStorage cache or reset state when switching user
   useEffect(() => {
-    setIsMounted(true);
+    if (!currentUserId) return;
     const cached = getLocalCache(currentUserId);
     if (cached) {
       setUser(cached.user);
       setLogs(cached.logs);
-    }
-  }, [currentUserId]);
-
-  // Synchronize User ID & Email and force fetch real data when session changes
-  useEffect(() => {
-    if (isMounted && currentUserId) {
-      setUser((prev) => ({
-        ...prev,
+    } else {
+      setUser({
         User_ID: currentUserId,
         Email: currentEmail,
-      }));
+        Current_Rate_Per_Unit: 8.0,
+        Created_At: new Date().toISOString(),
+        hasCompletedOnboarding: true,
+      });
+      setLogs([]);
     }
-  }, [currentUserId, currentEmail, isMounted]);
+  }, [currentUserId, currentEmail]);
 
   // Dynamically Filtered Logs based on active timeFilter
   const filteredLogs = useMemo(() => {
@@ -214,66 +241,76 @@ function KhafaiDashboardContent() {
   };
 
   // Fetch real data strictly for currentUserId from API & Google Sheets database
-  const fetchData = useCallback(async (userId: string, forceFetch = false) => {
-    setIsLoading(true);
-    if (forceFetch) {
-      setIsFetchingInitialData(true);
-    }
-    // Load local cache immediately for instant UI responsiveness
-    const cached = getLocalCache(userId);
-    if (cached && !forceFetch) {
-      setUser(cached.user);
-      setLogs(cached.logs);
-    }
+  const fetchData = useCallback(
+    async (userId: string, forceFetch = false, emailOverride?: string, nameOverride?: string, pictureOverride?: string) => {
+      if (!userId) return;
+      const activeEmail = emailOverride || currentEmail;
+      const activeName = nameOverride || currentName;
+      const activePicture = pictureOverride || currentPicture;
 
-    try {
-      const res = await fetch("/api/meter-logs", {
-        headers: { "x-user-id": userId },
-        cache: "no-store",
-      });
-      const data = await res.json();
-
-      if (data.rateLimit) {
-        setRateLimit(data.rateLimit);
-        if (data.rateLimit.warningToast) {
-          addToast("warning", data.rateLimit.warningToast);
-        }
+      setIsLoading(true);
+      if (forceFetch) {
+        setIsFetchingInitialData(true);
+      }
+      // Load local cache immediately for instant UI responsiveness
+      const cached = getLocalCache(userId);
+      if (cached && !forceFetch) {
+        setUser(cached.user);
+        setLogs(cached.logs);
       }
 
-      if (data.success) {
-        const updatedUser = data.user || {
-          User_ID: userId,
-          Email: `${userId}@khafai.app`,
-          Current_Rate_Per_Unit: 8.0,
-          Created_At: new Date().toISOString(),
-          hasCompletedOnboarding: true,
-        };
-        const updatedLogs = data.logs || [];
+      try {
+        const res = await fetch("/api/meter-logs", {
+          headers: {
+            "x-user-id": userId,
+            "x-user-email": activeEmail,
+            "x-user-name": encodeURIComponent(activeName),
+            "x-user-picture": encodeURIComponent(activePicture),
+          },
+          cache: "no-store",
+        });
+        const data = await res.json();
 
-        // Cache Wiping Protection:
-        // Only overwrite UI and LocalStorage if GAS responded successfully (isGasConnected = true)
-        // OR if new logs are returned OR if there were no previous cached logs.
-        if (data.isGasConnected || updatedLogs.length > 0 || !cached?.logs?.length) {
+        if (data.rateLimit) {
+          setRateLimit(data.rateLimit);
+          if (data.rateLimit.warningToast) {
+            addToast("warning", data.rateLimit.warningToast);
+          }
+        }
+
+        if (data.success) {
+          const updatedUser = data.user || {
+            User_ID: userId,
+            Email: activeEmail,
+            Name: activeName,
+            Picture: activePicture,
+            Current_Rate_Per_Unit: 8.0,
+            Created_At: new Date().toISOString(),
+            hasCompletedOnboarding: true,
+          };
+          const updatedLogs = data.logs || [];
+
           setUser(updatedUser);
           setLogs(updatedLogs);
           saveLocalCache(userId, updatedUser, updatedLogs);
+        } else if (data.error === "ACCOUNT_LOCKED") {
+          addToast("error", "ระบบถูกระงับชั่วคราว", "เข้าสู่สถานะถูกล็อก");
         }
-      } else if (data.error === "ACCOUNT_LOCKED") {
-        addToast("error", "ระบบถูกระงับชั่วคราว", "เข้าสู่สถานะถูกล็อก");
+      } catch {
+        // Fallback to local cache if network error
+      } finally {
+        setIsLoading(false);
+        setIsFetchingInitialData(false);
       }
-    } catch {
-      // Fallback to local cache if network error
-    } finally {
-      setIsLoading(false);
-      setIsFetchingInitialData(false);
-    }
-  }, []);
+    },
+    [currentEmail, currentName, currentPicture]
+  );
 
   useEffect(() => {
-    if (isMounted && currentUserId) {
-      fetchData(currentUserId, true);
+    if (currentUserId) {
+      fetchData(currentUserId, true, currentEmail, currentName, currentPicture);
     }
-  }, [currentUserId, fetchData, isMounted]);
+  }, [currentUserId, currentEmail, currentName, currentPicture, fetchData]);
 
   // 0ms Optimistic UI Save Log Handler + Server & GAS Database Persistence
   const handleSaveLog = async (formData: {
@@ -325,6 +362,7 @@ function KhafaiDashboardContent() {
         headers: {
           "Content-Type": "application/json",
           "x-user-id": currentUserId,
+          "x-user-email": currentEmail,
         },
         body: JSON.stringify(formData),
       });
@@ -354,7 +392,7 @@ function KhafaiDashboardContent() {
 
   // 0ms Optimistic Tariff Update Handler + Local Cache Persistence
   const handleSaveTariffRate = async (newRate: number) => {
-    const updatedUser = { ...user, Current_Rate_Per_Unit: newRate };
+    const updatedUser = { ...user, Current_Rate_Per_Unit: newRate, Email: currentEmail || user.Email };
     const updatedLogs = recalculateLogs(logs, newRate);
 
     setUser(updatedUser);
@@ -370,8 +408,9 @@ function KhafaiDashboardContent() {
         headers: {
           "Content-Type": "application/json",
           "x-user-id": currentUserId,
+          "x-user-email": currentEmail,
         },
-        body: JSON.stringify({ Current_Rate_Per_Unit: newRate }),
+        body: JSON.stringify({ Current_Rate_Per_Unit: newRate, Email: currentEmail }),
       });
 
       const data = await res.json();
@@ -421,7 +460,10 @@ function KhafaiDashboardContent() {
     try {
       const res = await fetch(`/api/meter-logs/${logId}`, {
         method: "DELETE",
-        headers: { "x-user-id": currentUserId },
+        headers: {
+          "x-user-id": currentUserId,
+          "x-user-email": currentEmail,
+        },
       });
 
       const data = await res.json();
@@ -480,6 +522,22 @@ function KhafaiDashboardContent() {
       addToast("error", "ไม่สามารถปลดล็อกได้");
     }
   };
+
+  if (!isMounted) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="w-10 h-10 rounded-full border-4 border-blue-200 border-t-blue-600 animate-spin" />
+      </div>
+    );
+  }
+
+  if (isAuthLoading || !isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center space-y-4 text-white">
+        <div className="w-10 h-10 rounded-full border-4 border-blue-500/30 border-t-blue-500 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans antialiased">
@@ -618,24 +676,6 @@ function KhafaiDashboardContent() {
   );
 }
 
-function KhafaiDashboardWrapper() {
-  const { customClientId } = useGoogleAuth();
-  const googleClientId =
-    customClientId ||
-    process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
-    "185343067017-lnui2nbdub6tl503cuu4opntei97332k.apps.googleusercontent.com";
-
-  return (
-    <GoogleOAuthProvider clientId={googleClientId}>
-      <KhafaiDashboardContent />
-    </GoogleOAuthProvider>
-  );
-}
-
 export default function KhafaiDashboard() {
-  return (
-    <GoogleAuthProvider>
-      <KhafaiDashboardWrapper />
-    </GoogleAuthProvider>
-  );
+  return <KhafaiDashboardContent />;
 }

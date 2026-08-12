@@ -28,7 +28,8 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: logId } = await params;
-  const userId = req.headers.get("x-user-id") || "google-sub-1029384756";
+  const userEmail = req.headers.get("x-user-email") || "";
+  const userId = req.headers.get("x-user-id") || userEmail || "";
   const rateLimit = checkRateLimit(userId, "write");
 
   if (rateLimit.isLocked) {
@@ -123,7 +124,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: logId } = await params;
-  const userId = req.headers.get("x-user-id") || "google-sub-1029384756";
+  const userEmail = req.headers.get("x-user-email") || "";
+  const userId = req.headers.get("x-user-id") || userEmail || "";
   const rateLimit = checkRateLimit(userId, "write");
 
   if (rateLimit.isLocked) {
