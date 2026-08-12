@@ -3,9 +3,48 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
 /**
+ * Generates a clean dynamic filename based on active time filter.
+ */
+function getExportFilename(filterMode?: string, extension: "pdf" | "csv" = "pdf"): string {
+  const now = new Date();
+  const monthNames = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
+  const monthStr = monthNames[now.getMonth()];
+  const yearStr = now.getFullYear();
+
+  let suffix = `${monthStr}${yearStr}`;
+  if (filterMode === "this_week") {
+    const todayFormatted = `${yearStr}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    suffix = `ThisWeek_${todayFormatted}`;
+  } else if (filterMode === "this_month") {
+    suffix = `ThisMonth_${monthStr}${yearStr}`;
+  } else if (filterMode === "this_year") {
+    suffix = `Year${yearStr}`;
+  } else if (filterMode === "all") {
+    suffix = `AllHistory`;
+  } else if (filterMode === "custom") {
+    suffix = `CustomRange_${yearStr}`;
+  }
+
+  return `Khafai_Report_${suffix}.${extension}`;
+}
+
+/**
  * Generates and downloads a formatted CSV file of historical meter logs.
  */
-export function exportToCSV(logs: MeterLog[], user: UserProfile): void {
+export function exportToCSV(logs: MeterLog[], user: UserProfile, filterMode?: string): void {
   const headers = [
     "Log ID",
     "Record Date",
@@ -32,28 +71,12 @@ export function exportToCSV(logs: MeterLog[], user: UserProfile): void {
     "data:text/csv;charset=utf-8,\uFEFF" +
     [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
 
-  const now = new Date();
-  const monthNames = [
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec",
-  ];
-  const monthStr = monthNames[now.getMonth()];
-  const yearStr = now.getFullYear();
+  const filename = getExportFilename(filterMode, "csv");
 
   const encodedUri = encodeURI(csvContent);
   const link = document.createElement("a");
   link.setAttribute("href", encodedUri);
-  link.setAttribute("download", `Khafai_Report_${monthStr}${yearStr}.csv`);
+  link.setAttribute("download", filename);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
@@ -62,25 +85,9 @@ export function exportToCSV(logs: MeterLog[], user: UserProfile): void {
 /**
  * Generates and downloads a PDF summary report using jsPDF and jspdf-autotable.
  */
-export function exportToPDF(logs: MeterLog[], user: UserProfile): void {
+export function exportToPDF(logs: MeterLog[], user: UserProfile, filterMode?: string): void {
   const doc = new jsPDF();
   const now = new Date();
-  const monthNames = [
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec",
-  ];
-  const monthStr = monthNames[now.getMonth()];
-  const yearStr = now.getFullYear();
 
   // 1. BRAND HEADER (Top Left Brand + Top Right Document Type Tag)
   doc.setFontSize(20);
@@ -120,10 +127,17 @@ export function exportToPDF(logs: MeterLog[], user: UserProfile): void {
   doc.setTextColor(100, 116, 139); // slate-500
   doc.text(`User ID: ${user.User_ID}`, 18, 42.5);
 
+  // Filter Mode Label Mapping for metadata block
+  let filterLabel = "This Month";
+  if (filterMode === "this_week") filterLabel = "This Week";
+  if (filterMode === "this_year") filterLabel = "This Year";
+  if (filterMode === "all") filterLabel = "All History";
+  if (filterMode === "custom") filterLabel = "Custom Range";
+
   // Column 2 (Right): Report Metadata
   doc.setFont("helvetica", "bold");
   doc.setTextColor(51, 65, 85);
-  doc.text(`Report Date: ${now.toLocaleDateString("en-GB")}`, 115, 37);
+  doc.text(`Report Date: ${now.toLocaleDateString("en-GB")} (${filterLabel})`, 115, 37);
 
   doc.setFont("helvetica", "normal");
   doc.setTextColor(100, 116, 139);
@@ -268,6 +282,7 @@ export function exportToPDF(logs: MeterLog[], user: UserProfile): void {
     doc.text(`Page ${i} of ${totalPages}`, 196, pageHeight - 8, { align: "right" });
   }
 
-  // Save PDF with clean filename format: Khafai_Report_Aug2026.pdf
-  doc.save(`Khafai_Report_${monthStr}${yearStr}.pdf`);
+  // Save PDF with clean dynamic filename format
+  const filename = getExportFilename(filterMode, "pdf");
+  doc.save(filename);
 }
