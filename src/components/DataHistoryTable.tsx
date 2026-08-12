@@ -258,7 +258,11 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
                   <th className="py-3 px-3 text-center rounded-r-lg">จัดการ</th>
                 </tr>
               </thead>
-              <tbody suppressHydrationWarning className="divide-y divide-slate-100">
+              <tbody
+                key={timeFilter}
+                suppressHydrationWarning
+                className="divide-y divide-slate-100 animate-in fade-in slide-in-from-bottom-1 duration-200 ease-out"
+              >
                 {filteredLogs.map((log) => (
                   <tr
                     key={log.Log_ID}
@@ -323,7 +327,11 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
           </div>
 
           {/* Mobile View: Card List Format */}
-          <div suppressHydrationWarning className="block md:hidden space-y-3">
+          <div
+            key={timeFilter}
+            suppressHydrationWarning
+            className="block md:hidden space-y-3 animate-in fade-in slide-in-from-bottom-1 duration-200 ease-out"
+          >
             {filteredLogs.map((log) => (
               <div
                 key={log.Log_ID}

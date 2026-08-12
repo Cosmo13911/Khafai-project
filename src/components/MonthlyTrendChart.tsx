@@ -67,7 +67,7 @@ export const MonthlyTrendChart: React.FC<MonthlyTrendChartProps> = memo(({ data 
           <span>ยังไม่มีข้อมูลสถิติรายเดือน</span>
         </div>
       ) : (
-        <div className="w-full h-64 sm:h-72">
+        <div key={data.map((d) => d.monthKey).join("-")} className="w-full h-64 sm:h-72 animate-in fade-in duration-300 ease-out">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data} margin={{ top: 10, right: 15, left: 15, bottom: 0 }}>
               <XAxis
@@ -89,6 +89,9 @@ export const MonthlyTrendChart: React.FC<MonthlyTrendChartProps> = memo(({ data 
                 fill="#3B82F6"
                 radius={[6, 6, 0, 0]}
                 maxBarSize={48}
+                isAnimationActive={true}
+                animationDuration={350}
+                animationEasing="ease-out"
               />
             </BarChart>
           </ResponsiveContainer>
