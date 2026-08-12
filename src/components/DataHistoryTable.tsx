@@ -343,26 +343,26 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
               </div>
             </div>
 
-            {/* Mobile View: 2-Row Key-Value Grid Card Format */}
+            {/* Mobile View: Ultra-Compact Card UI (50% Height Reduction) */}
             <div
               key={timeFilter}
               suppressHydrationWarning
-              className="block md:hidden space-y-2.5 max-h-[380px] overflow-y-auto no-scrollbar"
+              className="block md:hidden space-y-2 max-h-[380px] overflow-y-auto no-scrollbar"
             >
               {filteredLogs.map((log, index) => (
                 <div
                   key={log.Log_ID}
                   style={{ animationDelay: `${index * 35}ms` }}
-                  className="bg-slate-50 rounded-xl p-3.5 border border-slate-200 space-y-2.5 relative animate-stagger shadow-2xs"
+                  className="bg-slate-50 rounded-xl p-3 border border-slate-200/80 space-y-1.5 relative animate-stagger shadow-2xs hover:bg-slate-100/50 transition-colors"
                 >
                   {/* Top Row: Date & Badge on Left | Total Cost on Right */}
-                  <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
+                  <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <span className="text-xs font-semibold text-slate-800">
                         {log.Record_Date}
                       </span>
                       {log.Is_New_Meter && (
-                        <span className="inline-flex items-center text-[10px] font-bold text-blue-700 bg-blue-100 border border-blue-200 px-2 py-0.5 rounded-full">
+                        <span className="inline-flex items-center text-[10px] font-bold text-blue-700 bg-blue-100 border border-blue-200 px-1.5 py-0.2 rounded-full">
                           รอบมิเตอร์ใหม่
                         </span>
                       )}
@@ -370,11 +370,11 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
 
                     <div>
                       {log.Is_New_Meter || log.Total_Cost === 0 ? (
-                        <span className="font-medium text-slate-400 text-sm font-mono">
+                        <span className="font-medium text-slate-400 text-xs font-mono">
                           <span className="text-slate-500 font-medium mr-0.5">฿</span>0.00
                         </span>
                       ) : (
-                        <span className="font-semibold text-slate-800 text-sm font-mono">
+                        <span className="font-bold text-slate-800 text-sm font-mono">
                           <span className="text-slate-500 font-medium mr-0.5">฿</span>
                           {log.Total_Cost.toLocaleString(undefined, {
                             minimumFractionDigits: 2,
@@ -385,16 +385,10 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
                     </div>
                   </div>
 
-                  {/* Middle Row: Meter Reading on Left | Units Used on Right */}
-                  <div className="flex items-center justify-between text-xs pt-0.5">
-                    <div className="text-slate-600">
-                      <span className="text-slate-400 mr-1.5">เลขมิเตอร์:</span>
-                      <span className="font-mono font-bold text-slate-800">
-                        {log.Meter_Reading.toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="text-slate-600">
-                      <span className="text-slate-400 mr-1.5">หน่วยที่ใช้:</span>
+                  {/* Second Row: Value-First Specs + Icon-Only Action Buttons */}
+                  <div className="flex items-center justify-between pt-1 border-t border-slate-200/60">
+                    {/* Left: Value-First Specs (19 kWh • มิเตอร์ 1,982) */}
+                    <div className="flex items-center space-x-1.5 text-xs text-slate-500">
                       {log.Is_New_Meter ? (
                         <span className="font-semibold text-slate-400 font-mono">0 kWh</span>
                       ) : (
@@ -402,25 +396,29 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
                           {log.Units_Used} kWh
                         </span>
                       )}
+                      <span className="text-slate-300">•</span>
+                      <span className="text-slate-500 font-mono text-[11px]">
+                        มิเตอร์ {log.Meter_Reading.toLocaleString()}
+                      </span>
                     </div>
-                  </div>
 
-                  {/* Bottom Row: 2-Column Full Width Action Buttons */}
-                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200/60">
-                    <button
-                      onClick={() => onOpenEditModal(log)}
-                      className="flex items-center justify-center space-x-1.5 text-xs font-semibold text-blue-600 bg-white border border-blue-200 hover:bg-blue-50 py-2 rounded-lg transition-colors cursor-pointer min-h-[38px]"
-                    >
-                      <Pencil className="w-3.5 h-3.5" />
-                      <span>แก้ไข</span>
-                    </button>
-                    <button
-                      onClick={() => onConfirmDelete(log)}
-                      className="flex items-center justify-center space-x-1.5 text-xs font-semibold text-rose-600 bg-white border border-rose-200 hover:bg-rose-50 py-2 rounded-lg transition-colors cursor-pointer min-h-[38px]"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>ลบ</span>
-                    </button>
+                    {/* Right: Icon-Only Action Buttons */}
+                    <div className="flex items-center space-x-1">
+                      <button
+                        onClick={() => onOpenEditModal(log)}
+                        className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
+                        title="แก้ไข"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => onConfirmDelete(log)}
+                        className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                        title="ลบ"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
