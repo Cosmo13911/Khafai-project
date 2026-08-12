@@ -106,18 +106,18 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
                   className="fixed inset-0 z-40"
                   onClick={() => setIsExportMenuOpen(false)}
                 />
-                <div className="absolute right-0 top-full mt-1.5 w-48 bg-white rounded-xl border border-slate-200 shadow-xl p-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+                <div className="absolute right-0 top-full mt-1.5 w-60 bg-white rounded-xl border border-slate-200 shadow-xl p-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
                   <button
                     onClick={() => {
                       setIsExportMenuOpen(false);
                       onExportPDF(filteredLogs);
                     }}
-                    className="w-full flex items-center space-x-2.5 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900 rounded-lg transition-colors cursor-pointer text-left"
+                    className="w-full flex items-start space-x-2.5 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900 rounded-lg transition-colors cursor-pointer text-left"
                   >
-                    <FileText className="w-4 h-4 text-rose-500" />
-                    <div className="flex flex-col">
-                      <span className="font-semibold">ส่งออกเป็น PDF</span>
-                      <span className="text-[10px] text-slate-400">ไฟล์รายงานพร้อมสรุปยอด</span>
+                    <FileText className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                    <div className="flex flex-col min-w-0">
+                      <span className="font-semibold text-slate-900 whitespace-nowrap">ส่งออกเป็น PDF (.pdf)</span>
+                      <span className="text-[10px] text-slate-400 whitespace-nowrap">ไฟล์รายงานพร้อมสรุปยอด</span>
                     </div>
                   </button>
 
@@ -126,12 +126,12 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
                       setIsExportMenuOpen(false);
                       onExportCSV(filteredLogs);
                     }}
-                    className="w-full flex items-center space-x-2.5 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900 rounded-lg transition-colors cursor-pointer text-left"
+                    className="w-full flex items-start space-x-2.5 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900 rounded-lg transition-colors cursor-pointer text-left"
                   >
-                    <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-                    <div className="flex flex-col">
-                      <span className="font-semibold">ส่งออกเป็น CSV</span>
-                      <span className="text-[10px] text-slate-400">ไฟล์ข้อมูลตารางดิบ</span>
+                    <FileSpreadsheet className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <div className="flex flex-col min-w-0">
+                      <span className="font-semibold text-slate-900 whitespace-nowrap">ส่งออกเป็น CSV (.csv)</span>
+                      <span className="text-[10px] text-slate-400 whitespace-nowrap">ไฟล์ข้อมูลตารางดิบ</span>
                     </div>
                   </button>
                 </div>
