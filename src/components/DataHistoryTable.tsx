@@ -299,11 +299,11 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
                         <td className="py-3 px-3 text-right w-[130px] whitespace-nowrap">
                           {log.Is_New_Meter || log.Total_Cost === 0 ? (
                             <span className="text-slate-400 font-medium font-mono">
-                              <span className="text-slate-400 font-normal mr-0.5">฿</span>0.00
+                              <span className="text-slate-500 font-medium mr-0.5">฿</span>0.00
                             </span>
                           ) : (
                             <span className="font-semibold text-slate-800 font-mono">
-                              <span className="text-slate-400 font-normal mr-0.5">฿</span>
+                              <span className="text-slate-500 font-medium mr-0.5">฿</span>
                               {log.Total_Cost.toFixed(2)}
                             </span>
                           )}
@@ -383,11 +383,11 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
                       <span className="text-slate-500 block text-[11px]">ยอดเงินรวม</span>
                       {log.Is_New_Meter || log.Total_Cost === 0 ? (
                         <span className="font-medium text-slate-400 text-sm block font-mono">
-                          <span className="text-slate-400 font-normal mr-0.5">฿</span>0.00
+                          <span className="text-slate-500 font-medium mr-0.5">฿</span>0.00
                         </span>
                       ) : (
                         <span className="font-semibold text-slate-800 text-sm block font-mono">
-                          <span className="text-slate-400 font-normal mr-0.5">฿</span>
+                          <span className="text-slate-500 font-medium mr-0.5">฿</span>
                           {log.Total_Cost.toFixed(2)}
                         </span>
                       )}
