@@ -7,7 +7,7 @@ import { UserProfile, MeterLog, SummaryData, MonthlyChartData, RateLimitStatus }
 import { Header } from "@/components/Header";
 import { SummaryCards } from "@/components/SummaryCards";
 import { MonthlyTrendChart } from "@/components/MonthlyTrendChart";
-import { DataHistoryTable } from "@/components/DataHistoryTable";
+import { DataHistoryTable, TimeFilterMode } from "@/components/DataHistoryTable";
 import { LogFormModal } from "@/components/LogFormModal";
 import { TariffUpdateModal } from "@/components/TariffUpdateModal";
 import { DeleteProtectionModal } from "@/components/DeleteProtectionModal";
@@ -75,6 +75,11 @@ function KhafaiDashboardContent() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
+  // Time-Range Filter State
+  const [timeFilter, setTimeFilter] = useState<TimeFilterMode>("this_month");
+  const [customStartDate, setCustomStartDate] = useState<string>("");
+  const [customEndDate, setCustomEndDate] = useState<string>("");
+
   // Modals state
   const [isLogFormOpen, setIsLogFormOpen] = useState<boolean>(false);
   const [editingLog, setEditingLog] = useState<MeterLog | null>(null);
@@ -109,14 +114,70 @@ function KhafaiDashboardContent() {
     }
   }, [currentUserId, currentEmail, isMounted]);
 
+  // Dynamically Filtered Logs based on active timeFilter
+  const filteredLogs = useMemo(() => {
+    const now = new Date();
+
+    if (timeFilter === "all") return logs;
+
+    if (timeFilter === "this_month") {
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth();
+      return logs.filter((log) => {
+        const d = new Date(log.Record_Date);
+        return (
+          !isNaN(d.getTime()) &&
+          d.getFullYear() === currentYear &&
+          d.getMonth() === currentMonth
+        );
+      });
+    }
+
+    if (timeFilter === "this_week") {
+      const d = new Date(now);
+      const day = d.getDay();
+      const diffToMonday = d.getDate() - day + (day === 0 ? -6 : 1);
+      const monday = new Date(d.setDate(diffToMonday));
+      monday.setHours(0, 0, 0, 0);
+
+      return logs.filter((log) => {
+        const logDate = new Date(log.Record_Date);
+        logDate.setHours(0, 0, 0, 0);
+        return !isNaN(logDate.getTime()) && logDate >= monday && logDate <= now;
+      });
+    }
+
+    if (timeFilter === "this_year") {
+      const currentYear = now.getFullYear();
+      return logs.filter((log) => {
+        const d = new Date(log.Record_Date);
+        return !isNaN(d.getTime()) && d.getFullYear() === currentYear;
+      });
+    }
+
+    if (timeFilter === "custom" && customStartDate && customEndDate) {
+      const start = new Date(customStartDate);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(customEndDate);
+      end.setHours(23, 59, 59, 999);
+
+      return logs.filter((log) => {
+        const d = new Date(log.Record_Date);
+        return !isNaN(d.getTime()) && d >= start && d <= end;
+      });
+    }
+
+    return logs;
+  }, [logs, timeFilter, customStartDate, customEndDate]);
+
   // Derived metrics with 0ms memoization
   const summary: SummaryData = useMemo(() => {
     return calculateSummaryData(logs, user.Current_Rate_Per_Unit);
   }, [logs, user]);
 
   const monthlyChart: MonthlyChartData[] = useMemo(() => {
-    return calculateMonthlyChartData(logs);
-  }, [logs]);
+    return calculateMonthlyChartData(filteredLogs);
+  }, [filteredLogs]);
 
   const addToast = (type: "warning" | "success" | "error", message: string, title?: string) => {
     const id = `toast-${Date.now()}-${Math.random()}`;
@@ -450,6 +511,13 @@ function KhafaiDashboardContent() {
               <div className="lg:col-span-7 h-full">
                 <DataHistoryTable
                   logs={logs}
+                  filteredLogs={filteredLogs}
+                  timeFilter={timeFilter}
+                  onTimeFilterChange={setTimeFilter}
+                  customStartDate={customStartDate}
+                  onCustomStartDateChange={setCustomStartDate}
+                  customEndDate={customEndDate}
+                  onCustomEndDateChange={setCustomEndDate}
                   onOpenAddModal={() => {
                     setEditingLog(null);
                     setIsLogFormOpen(true);
@@ -459,8 +527,8 @@ function KhafaiDashboardContent() {
                     setIsLogFormOpen(true);
                   }}
                   onConfirmDelete={handleOpenDeleteModal}
-                  onExportCSV={(filteredLogs) => exportToCSV(filteredLogs || logs, user)}
-                  onExportPDF={(filteredLogs) => exportToPDF(filteredLogs || logs, user)}
+                  onExportCSV={(customLogs) => exportToCSV(customLogs || filteredLogs, user)}
+                  onExportPDF={(customLogs) => exportToPDF(customLogs || filteredLogs, user)}
                 />
               </div>
             </div>

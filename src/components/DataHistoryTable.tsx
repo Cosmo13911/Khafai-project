@@ -18,6 +18,13 @@ export type TimeFilterMode = "this_week" | "this_month" | "this_year" | "all" | 
 
 interface DataHistoryTableProps {
   logs: MeterLog[];
+  filteredLogs: MeterLog[];
+  timeFilter: TimeFilterMode;
+  onTimeFilterChange: (mode: TimeFilterMode) => void;
+  customStartDate: string;
+  onCustomStartDateChange: (date: string) => void;
+  customEndDate: string;
+  onCustomEndDateChange: (date: string) => void;
   onOpenAddModal: () => void;
   onOpenEditModal: (log: MeterLog) => void;
   onConfirmDelete: (log: MeterLog) => void;
@@ -27,72 +34,22 @@ interface DataHistoryTableProps {
 
 export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
   logs,
+  filteredLogs,
+  timeFilter,
+  onTimeFilterChange,
+  customStartDate,
+  onCustomStartDateChange,
+  customEndDate,
+  onCustomEndDateChange,
   onOpenAddModal,
   onOpenEditModal,
   onConfirmDelete,
   onExportCSV,
   onExportPDF,
 }) => {
-  const [timeFilter, setTimeFilter] = useState<TimeFilterMode>("this_month");
-  const [customStartDate, setCustomStartDate] = useState<string>("");
-  const [customEndDate, setCustomEndDate] = useState<string>("");
   const [showCustomInputs, setShowCustomInputs] = useState<boolean>(false);
 
-  // Filter logs based on selected time filter
-  const filteredLogs = useMemo(() => {
-    const now = new Date();
 
-    if (timeFilter === "all") return logs;
-
-    if (timeFilter === "this_month") {
-      const currentYear = now.getFullYear();
-      const currentMonth = now.getMonth();
-      return logs.filter((log) => {
-        const d = new Date(log.Record_Date);
-        return (
-          !isNaN(d.getTime()) &&
-          d.getFullYear() === currentYear &&
-          d.getMonth() === currentMonth
-        );
-      });
-    }
-
-    if (timeFilter === "this_week") {
-      const d = new Date(now);
-      const day = d.getDay();
-      const diffToMonday = d.getDate() - day + (day === 0 ? -6 : 1);
-      const monday = new Date(d.setDate(diffToMonday));
-      monday.setHours(0, 0, 0, 0);
-
-      return logs.filter((log) => {
-        const logDate = new Date(log.Record_Date);
-        logDate.setHours(0, 0, 0, 0);
-        return !isNaN(logDate.getTime()) && logDate >= monday && logDate <= now;
-      });
-    }
-
-    if (timeFilter === "this_year") {
-      const currentYear = now.getFullYear();
-      return logs.filter((log) => {
-        const d = new Date(log.Record_Date);
-        return !isNaN(d.getTime()) && d.getFullYear() === currentYear;
-      });
-    }
-
-    if (timeFilter === "custom" && customStartDate && customEndDate) {
-      const start = new Date(customStartDate);
-      start.setHours(0, 0, 0, 0);
-      const end = new Date(customEndDate);
-      end.setHours(23, 59, 59, 999);
-
-      return logs.filter((log) => {
-        const d = new Date(log.Record_Date);
-        return !isNaN(d.getTime()) && d >= start && d <= end;
-      });
-    }
-
-    return logs;
-  }, [logs, timeFilter, customStartDate, customEndDate]);
 
   // Dynamic counter subtitle
   const subtitleText = useMemo(() => {
@@ -161,7 +118,7 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
       <div className="relative mb-3 border-b border-slate-100/60 pb-2">
         <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
           <button
-            onClick={() => setTimeFilter("this_week")}
+            onClick={() => onTimeFilterChange("this_week")}
             className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
               timeFilter === "this_week"
                 ? "bg-blue-600 text-white shadow-xs"
@@ -172,7 +129,7 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
           </button>
 
           <button
-            onClick={() => setTimeFilter("this_month")}
+            onClick={() => onTimeFilterChange("this_month")}
             className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
               timeFilter === "this_month"
                 ? "bg-blue-600 text-white shadow-xs"
@@ -183,7 +140,7 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
           </button>
 
           <button
-            onClick={() => setTimeFilter("this_year")}
+            onClick={() => onTimeFilterChange("this_year")}
             className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
               timeFilter === "this_year"
                 ? "bg-blue-600 text-white shadow-xs"
@@ -194,7 +151,7 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
           </button>
 
           <button
-            onClick={() => setTimeFilter("all")}
+            onClick={() => onTimeFilterChange("all")}
             className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
               timeFilter === "all"
                 ? "bg-blue-600 text-white shadow-xs"
@@ -206,7 +163,7 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
 
           <button
             onClick={() => {
-              setTimeFilter("custom");
+              onTimeFilterChange("custom");
               setShowCustomInputs(!showCustomInputs);
             }}
             className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
@@ -233,8 +190,8 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
                 startDate={customStartDate}
                 endDate={customEndDate}
                 onChange={(start, end) => {
-                  setCustomStartDate(start);
-                  setCustomEndDate(end);
+                  onCustomStartDateChange(start);
+                  onCustomEndDateChange(end);
                 }}
               />
             </div>
