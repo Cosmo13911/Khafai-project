@@ -93,12 +93,12 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
           <div className="relative">
             <button
               onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
-              className="flex items-center space-x-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-lg transition-colors cursor-pointer min-h-[44px]"
+              className="flex items-center space-x-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 px-2.5 sm:px-3 py-2 rounded-lg transition-colors cursor-pointer min-h-[40px] sm:min-h-[44px]"
               title="ส่งออกรายงานข้อมูล"
             >
-              <Download className="w-3.5 h-3.5 text-slate-600" />
-              <span>ส่งออก</span>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+              <Download className="w-3.5 h-3.5 text-slate-600 shrink-0" />
+              <span className="hidden sm:inline">ส่งออก</span>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
             </button>
 
             {isExportMenuOpen && (
@@ -144,7 +144,7 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
           {/* Primary CTA: Add Record */}
           <button
             onClick={onOpenAddModal}
-            className="flex items-center space-x-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 px-3.5 py-2 rounded-lg shadow-sm transition-colors cursor-pointer min-h-[44px]"
+            className="flex items-center space-x-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 px-3 sm:px-3.5 py-2 rounded-lg shadow-sm transition-colors cursor-pointer min-h-[40px] sm:min-h-[44px]"
           >
             <Plus className="w-4 h-4" />
             <span>เพิ่มบันทึก</span>
@@ -343,68 +343,80 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
               </div>
             </div>
 
-            {/* Mobile View: Card List Format */}
+            {/* Mobile View: 2-Row Key-Value Grid Card Format */}
             <div
               key={timeFilter}
               suppressHydrationWarning
-              className="block md:hidden space-y-3"
+              className="block md:hidden space-y-2.5 max-h-[380px] overflow-y-auto no-scrollbar"
             >
               {filteredLogs.map((log, index) => (
                 <div
                   key={log.Log_ID}
                   style={{ animationDelay: `${index * 35}ms` }}
-                  className="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-2 relative animate-stagger"
+                  className="bg-slate-50 rounded-xl p-3.5 border border-slate-200 space-y-2.5 relative animate-stagger shadow-2xs"
                 >
+                  {/* Top Row: Date & Badge on Left | Total Cost on Right */}
                   <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
-                    <span className="text-xs font-bold text-slate-900">
-                      วันที่: {log.Record_Date}
-                    </span>
-                    {log.Is_New_Meter && (
-                      <span className="inline-flex items-center text-[10px] font-bold text-blue-700 bg-blue-100 border border-blue-200 px-2 py-0.5 rounded-full">
-                        รอบมิเตอร์ใหม่
+                    <div className="flex items-center space-x-2">
+                      <span className="text-xs font-semibold text-slate-800">
+                        {log.Record_Date}
                       </span>
-                    )}
-                  </div>
+                      {log.Is_New_Meter && (
+                        <span className="inline-flex items-center text-[10px] font-bold text-blue-700 bg-blue-100 border border-blue-200 px-2 py-0.5 rounded-full">
+                          รอบมิเตอร์ใหม่
+                        </span>
+                      )}
+                    </div>
 
-                  <div className="grid grid-cols-3 gap-2 text-xs pt-1">
                     <div>
-                      <span className="text-slate-500 block text-[11px]">เลขมิเตอร์</span>
-                      <span className="font-mono font-bold text-slate-800 text-sm">
-                        {log.Meter_Reading.toLocaleString()}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-slate-500 block text-[11px]">หน่วยที่ใช้</span>
-                      <span className="font-bold text-blue-600 text-sm">
-                        {log.Is_New_Meter ? "0 kWh" : `${log.Units_Used} kWh`}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-slate-500 block text-[11px]">ยอดเงินรวม</span>
                       {log.Is_New_Meter || log.Total_Cost === 0 ? (
-                        <span className="font-medium text-slate-400 text-sm block font-mono">
+                        <span className="font-medium text-slate-400 text-sm font-mono">
                           <span className="text-slate-500 font-medium mr-0.5">฿</span>0.00
                         </span>
                       ) : (
-                        <span className="font-semibold text-slate-800 text-sm block font-mono">
+                        <span className="font-semibold text-slate-800 text-sm font-mono">
                           <span className="text-slate-500 font-medium mr-0.5">฿</span>
-                          {log.Total_Cost.toFixed(2)}
+                          {log.Total_Cost.toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
                         </span>
                       )}
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-end space-x-2.5 pt-2 border-t border-slate-200/60">
+                  {/* Middle Row: Meter Reading on Left | Units Used on Right */}
+                  <div className="flex items-center justify-between text-xs pt-0.5">
+                    <div className="text-slate-600">
+                      <span className="text-slate-400 mr-1.5">เลขมิเตอร์:</span>
+                      <span className="font-mono font-bold text-slate-800">
+                        {log.Meter_Reading.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="text-slate-600">
+                      <span className="text-slate-400 mr-1.5">หน่วยที่ใช้:</span>
+                      {log.Is_New_Meter ? (
+                        <span className="font-semibold text-slate-400 font-mono">0 kWh</span>
+                      ) : (
+                        <span className="font-bold text-blue-600 font-mono">
+                          {log.Units_Used} kWh
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Bottom Row: 2-Column Full Width Action Buttons */}
+                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200/60">
                     <button
                       onClick={() => onOpenEditModal(log)}
-                      className="flex items-center space-x-1.5 text-xs font-semibold text-blue-600 bg-white border border-blue-200 hover:bg-blue-50 px-3.5 py-2 rounded-lg transition-colors min-h-[40px]"
+                      className="flex items-center justify-center space-x-1.5 text-xs font-semibold text-blue-600 bg-white border border-blue-200 hover:bg-blue-50 py-2 rounded-lg transition-colors cursor-pointer min-h-[38px]"
                     >
                       <Pencil className="w-3.5 h-3.5" />
                       <span>แก้ไข</span>
                     </button>
                     <button
                       onClick={() => onConfirmDelete(log)}
-                      className="flex items-center space-x-1.5 text-xs font-semibold text-rose-600 bg-white border border-rose-200 hover:bg-rose-50 px-3.5 py-2 rounded-lg transition-colors min-h-[40px]"
+                      className="flex items-center justify-center space-x-1.5 text-xs font-semibold text-rose-600 bg-white border border-rose-200 hover:bg-rose-50 py-2 rounded-lg transition-colors cursor-pointer min-h-[38px]"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                       <span>ลบ</span>
