@@ -100,9 +100,12 @@ export const Header: React.FC<HeaderProps> = ({
                   className="fixed inset-0 z-40"
                   onClick={() => setIsDropdownOpen(false)}
                 />
-                <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-200 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-                  {/* Profile Header: Avatar + Name + Email */}
-                  <div className="px-4 py-3 border-b border-slate-100 flex items-center space-x-3">
+                <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-200 py-2 z-50 animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-150">
+                  {/* Profile Header: Avatar + Name + Email (Stagger 0ms) */}
+                  <div
+                    className="px-4 py-3 border-b border-slate-100 flex items-center space-x-3 animate-stagger"
+                    style={{ animationDelay: "0ms" }}
+                  >
                     {isMounted && session?.Picture ? (
                       // eslint-disable-next-next-line @next/next/no-img-element
                       <img
@@ -128,8 +131,11 @@ export const Header: React.FC<HeaderProps> = ({
                     </div>
                   </div>
 
-                  {/* Section 1: User Settings */}
-                  <div className="py-1 border-b border-slate-100">
+                  {/* Section 1: User Settings (Stagger 25ms) */}
+                  <div
+                    className="py-1 border-b border-slate-100 animate-stagger"
+                    style={{ animationDelay: "25ms" }}
+                  >
                     <button
                       onClick={() => {
                         setIsDropdownOpen(false);
@@ -142,8 +148,11 @@ export const Header: React.FC<HeaderProps> = ({
                     </button>
                   </div>
 
-                  {/* Section 3: Account Actions (Destructive) */}
-                  <div className="pt-1">
+                  {/* Section 3: Account Actions (Stagger 50ms) */}
+                  <div
+                    className="pt-1 animate-stagger"
+                    style={{ animationDelay: "50ms" }}
+                  >
                     <button
                       onClick={() => {
                         setIsDropdownOpen(false);
