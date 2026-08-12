@@ -117,7 +117,11 @@ export const Header: React.FC<HeaderProps> = ({
             {isDropdownOpen && (
               <>
                 <div
-                  className="fixed inset-0 z-40"
+                  className={`fixed inset-0 z-40 transition-opacity ${
+                    isDropdownClosing
+                      ? "animate-out fade-out duration-180 fill-mode-forwards"
+                      : "animate-in fade-in duration-180"
+                  }`}
                   onClick={() => closeDropdown()}
                 />
                 <div
