@@ -459,8 +459,8 @@ function KhafaiDashboardContent() {
                     setIsLogFormOpen(true);
                   }}
                   onConfirmDelete={handleOpenDeleteModal}
-                  onExportCSV={() => exportToCSV(logs, user)}
-                  onExportPDF={() => exportToPDF(logs, user)}
+                  onExportCSV={(filteredLogs) => exportToCSV(filteredLogs || logs, user)}
+                  onExportPDF={(filteredLogs) => exportToPDF(filteredLogs || logs, user)}
                 />
               </div>
             </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { memo } from "react";
+import React, { memo, useState, useMemo } from "react";
 import {
   Pencil,
   Trash2,
@@ -9,16 +9,19 @@ import {
   Plus,
   History,
   Info,
+  Calendar,
 } from "lucide-react";
 import { MeterLog } from "@/types";
+
+export type TimeFilterMode = "this_week" | "this_month" | "this_year" | "all" | "custom";
 
 interface DataHistoryTableProps {
   logs: MeterLog[];
   onOpenAddModal: () => void;
   onOpenEditModal: (log: MeterLog) => void;
   onConfirmDelete: (log: MeterLog) => void;
-  onExportCSV: () => void;
-  onExportPDF: () => void;
+  onExportCSV: (filteredLogs?: MeterLog[]) => void;
+  onExportPDF: (filteredLogs?: MeterLog[]) => void;
 }
 
 export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
@@ -29,10 +32,88 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
   onExportCSV,
   onExportPDF,
 }) => {
+  const [timeFilter, setTimeFilter] = useState<TimeFilterMode>("this_month");
+  const [customStartDate, setCustomStartDate] = useState<string>("");
+  const [customEndDate, setCustomEndDate] = useState<string>("");
+  const [showCustomInputs, setShowCustomInputs] = useState<boolean>(false);
+
+  // Filter logs based on selected time filter
+  const filteredLogs = useMemo(() => {
+    const now = new Date();
+
+    if (timeFilter === "all") return logs;
+
+    if (timeFilter === "this_month") {
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth();
+      return logs.filter((log) => {
+        const d = new Date(log.Record_Date);
+        return (
+          !isNaN(d.getTime()) &&
+          d.getFullYear() === currentYear &&
+          d.getMonth() === currentMonth
+        );
+      });
+    }
+
+    if (timeFilter === "this_week") {
+      const d = new Date(now);
+      const day = d.getDay();
+      const diffToMonday = d.getDate() - day + (day === 0 ? -6 : 1);
+      const monday = new Date(d.setDate(diffToMonday));
+      monday.setHours(0, 0, 0, 0);
+
+      return logs.filter((log) => {
+        const logDate = new Date(log.Record_Date);
+        logDate.setHours(0, 0, 0, 0);
+        return !isNaN(logDate.getTime()) && logDate >= monday && logDate <= now;
+      });
+    }
+
+    if (timeFilter === "this_year") {
+      const currentYear = now.getFullYear();
+      return logs.filter((log) => {
+        const d = new Date(log.Record_Date);
+        return !isNaN(d.getTime()) && d.getFullYear() === currentYear;
+      });
+    }
+
+    if (timeFilter === "custom" && customStartDate && customEndDate) {
+      const start = new Date(customStartDate);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(customEndDate);
+      end.setHours(23, 59, 59, 999);
+
+      return logs.filter((log) => {
+        const d = new Date(log.Record_Date);
+        return !isNaN(d.getTime()) && d >= start && d <= end;
+      });
+    }
+
+    return logs;
+  }, [logs, timeFilter, customStartDate, customEndDate]);
+
+  // Dynamic counter subtitle
+  const subtitleText = useMemo(() => {
+    if (timeFilter === "this_month") {
+      return `${filteredLogs.length} รายการในเดือนนี้ (จากทั้งหมด ${logs.length} รายการ)`;
+    }
+    if (timeFilter === "this_week") {
+      return `${filteredLogs.length} รายการในสัปดาห์นี้ (จากทั้งหมด ${logs.length} รายการ)`;
+    }
+    if (timeFilter === "this_year") {
+      return `${filteredLogs.length} รายการในปีนี้ (จากทั้งหมด ${logs.length} รายการ)`;
+    }
+    if (timeFilter === "custom") {
+      return `${filteredLogs.length} รายการตามช่วงเวลา (จากทั้งหมด ${logs.length} รายการ)`;
+    }
+    return `${logs.length} รายการทั้งหมด`;
+  }, [filteredLogs.length, logs.length, timeFilter]);
+
   return (
     <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex flex-col h-full">
       {/* Header section with Actions */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-100">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-2 pb-3 border-b border-slate-100">
         <div className="flex items-center space-x-2">
           <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
             <History className="w-4 h-4" />
@@ -40,7 +121,7 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
           <div>
             <h2 className="text-base font-bold text-slate-900">ประวัติการบันทึกมิเตอร์ไฟ</h2>
             <p suppressHydrationWarning className="text-xs text-slate-500">
-              รายการบันทึกมิเตอร์ทั้งหมด ({logs.length} รายการ)
+              {subtitleText}
             </p>
           </div>
         </div>
@@ -48,18 +129,18 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
         {/* Action Controls & Ghost Export Buttons */}
         <div className="flex items-center flex-wrap gap-2">
           <button
-            onClick={onExportCSV}
+            onClick={() => onExportCSV(filteredLogs)}
             className="flex items-center space-x-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-lg transition-colors cursor-pointer min-h-[44px]"
-            title="ส่งออกไฟล์ CSV"
+            title="ส่งออกไฟล์ CSV เฉพาะช่วงเวลาที่เลือก"
           >
             <FileText className="w-3.5 h-3.5 text-slate-600" />
             <span>ส่งออก CSV</span>
           </button>
 
           <button
-            onClick={onExportPDF}
+            onClick={() => onExportPDF(filteredLogs)}
             className="flex items-center space-x-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-lg transition-colors cursor-pointer min-h-[44px]"
-            title="ส่งออกไฟล์ PDF"
+            title="ส่งออกไฟล์ PDF เฉพาะช่วงเวลาที่เลือก"
           >
             <Download className="w-3.5 h-3.5 text-slate-600" />
             <span>ส่งออก PDF</span>
@@ -75,9 +156,110 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
         </div>
       </div>
 
-      {logs.length === 0 ? (
+      {/* Filter Controls: Horizontal Scrollable Pills */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-2 scrollbar-none mb-3 border-b border-slate-100/60">
+        <button
+          onClick={() => setTimeFilter("this_week")}
+          className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+            timeFilter === "this_week"
+              ? "bg-blue-600 text-white shadow-xs"
+              : "bg-slate-100 hover:bg-slate-200 text-slate-600"
+          }`}
+        >
+          สัปดาห์นี้
+        </button>
+
+        <button
+          onClick={() => setTimeFilter("this_month")}
+          className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+            timeFilter === "this_month"
+              ? "bg-blue-600 text-white shadow-xs"
+              : "bg-slate-100 hover:bg-slate-200 text-slate-600"
+          }`}
+        >
+          เดือนนี้
+        </button>
+
+        <button
+          onClick={() => setTimeFilter("this_year")}
+          className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+            timeFilter === "this_year"
+              ? "bg-blue-600 text-white shadow-xs"
+              : "bg-slate-100 hover:bg-slate-200 text-slate-600"
+          }`}
+        >
+          ปีนี้
+        </button>
+
+        <button
+          onClick={() => setTimeFilter("all")}
+          className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+            timeFilter === "all"
+              ? "bg-blue-600 text-white shadow-xs"
+              : "bg-slate-100 hover:bg-slate-200 text-slate-600"
+          }`}
+        >
+          ทั้งหมด
+        </button>
+
+        <button
+          onClick={() => {
+            setTimeFilter("custom");
+            setShowCustomInputs(!showCustomInputs);
+          }}
+          className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+            timeFilter === "custom"
+              ? "bg-blue-600 text-white shadow-xs"
+              : "bg-slate-100 hover:bg-slate-200 text-slate-600"
+          }`}
+        >
+          <Calendar className="w-3.5 h-3.5" />
+          <span>เลือกช่วงเวลา</span>
+        </button>
+      </div>
+
+      {/* Custom Date Range Picker Inputs */}
+      {timeFilter === "custom" && showCustomInputs && (
+        <div className="flex flex-wrap items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl mb-3 text-xs animate-in fade-in slide-in-from-top-1 duration-150">
+          <div className="flex items-center space-x-1.5">
+            <span className="text-slate-500 font-medium">เริ่มต้น:</span>
+            <input
+              type="date"
+              value={customStartDate}
+              onChange={(e) => setCustomStartDate(e.target.value)}
+              className="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-slate-800 font-mono focus:outline-hidden focus:border-blue-500"
+            />
+          </div>
+          <div className="flex items-center space-x-1.5">
+            <span className="text-slate-500 font-medium">ถึงวันที่:</span>
+            <input
+              type="date"
+              value={customEndDate}
+              onChange={(e) => setCustomEndDate(e.target.value)}
+              className="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-slate-800 font-mono focus:outline-hidden focus:border-blue-500"
+            />
+          </div>
+          {(customStartDate || customEndDate) && (
+            <button
+              onClick={() => {
+                setCustomStartDate("");
+                setCustomEndDate("");
+              }}
+              className="text-xs text-slate-500 hover:text-slate-800 underline ml-auto"
+            >
+              ล้างค่า
+            </button>
+          )}
+        </div>
+      )}
+
+      {filteredLogs.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center py-12 text-slate-400 text-sm">
-          <span>ยังไม่มีประวัติการบันทึก กดปุ่ม &quot;เพิ่มบันทึก&quot; เพื่อเริ่มต้น</span>
+          {logs.length === 0 ? (
+            <span>ยังไม่มีประวัติการบันทึก กดปุ่ม &quot;เพิ่มบันทึก&quot; เพื่อเริ่มต้น</span>
+          ) : (
+            <span>ไม่พบรายการบันทึกมิเตอร์ไฟในช่วงเวลาที่เลือก</span>
+          )}
         </div>
       ) : (
         <>
@@ -95,7 +277,7 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
                 </tr>
               </thead>
               <tbody suppressHydrationWarning className="divide-y divide-slate-100">
-                {logs.map((log) => (
+                {filteredLogs.map((log) => (
                   <tr
                     key={log.Log_ID}
                     className="hover:bg-slate-50/80 transition-colors group"
@@ -160,7 +342,7 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
 
           {/* Mobile View: Card List Format */}
           <div suppressHydrationWarning className="block md:hidden space-y-3">
-            {logs.map((log) => (
+            {filteredLogs.map((log) => (
               <div
                 key={log.Log_ID}
                 className="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-2 relative"
