@@ -12,6 +12,7 @@ import {
   Calendar,
   ChevronDown,
   FileSpreadsheet,
+  X,
 } from "lucide-react";
 import { MeterLog } from "@/types";
 import { CustomDatePickerPopover } from "./CustomDatePickerPopover";
@@ -105,10 +106,59 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
               <>
                 {/* Backdrop overlay */}
                 <div
-                  className="fixed inset-0 z-40"
+                  className="fixed inset-0 z-40 bg-slate-900/30 backdrop-blur-xs transition-opacity sm:bg-transparent sm:backdrop-blur-none"
                   onClick={() => setIsExportMenuOpen(false)}
                 />
-                <div className="absolute right-0 top-full mt-1.5 w-60 max-w-[calc(100vw-2rem)] bg-white rounded-xl border border-slate-200 shadow-xl p-1.5 z-50 origin-top-right animate-in fade-in zoom-in-95 duration-150">
+
+                {/* Mobile View: Bottom Sheet */}
+                <div className="fixed inset-x-0 bottom-0 z-50 rounded-t-2xl bg-white p-4 shadow-2xl border-t border-slate-200 animate-in slide-in-from-bottom duration-200 sm:hidden">
+                  <div className="flex items-center justify-between pb-3 mb-2 border-b border-slate-100">
+                    <span className="text-sm font-bold text-slate-900">เลือกรูปแบบการส่งออก</span>
+                    <button
+                      onClick={() => setIsExportMenuOpen(false)}
+                      className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <button
+                      onClick={() => {
+                        setIsExportMenuOpen(false);
+                        onExportPDF(filteredLogs);
+                      }}
+                      className="w-full flex items-center space-x-3 p-3 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer text-left"
+                    >
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-rose-50 text-rose-600 shrink-0">
+                        <FileText className="w-4 h-4" />
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-xs font-bold text-slate-900">ส่งออกเป็น PDF (.pdf)</span>
+                        <span className="text-[10px] text-slate-400">ไฟล์รายงานพร้อมสรุปยอด</span>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setIsExportMenuOpen(false);
+                        onExportCSV(filteredLogs);
+                      }}
+                      className="w-full flex items-center space-x-3 p-3 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer text-left"
+                    >
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 shrink-0">
+                        <FileSpreadsheet className="w-4 h-4" />
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-xs font-bold text-slate-900">ส่งออกเป็น CSV (.csv)</span>
+                        <span className="text-[10px] text-slate-400">ไฟล์ข้อมูลตารางดิบ</span>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Desktop View: Floating Dropdown */}
+                <div className="hidden sm:block absolute right-0 top-full mt-1.5 w-60 bg-white rounded-xl border border-slate-200 shadow-xl p-1.5 z-50 origin-top-right animate-in fade-in zoom-in-95 duration-150">
                   <button
                     onClick={() => {
                       setIsExportMenuOpen(false);
