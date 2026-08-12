@@ -15,7 +15,7 @@ export const SummaryCards: React.FC<SummaryCardsProps> = memo(({ summary }) => {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
       {/* Card 1: Monthly Units Consumed */}
-      <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex flex-col justify-between transition-all hover:shadow-md">
+      <div className="bg-white rounded-2xl p-5 border border-slate-200/60 shadow-xs flex flex-col justify-between transition-all hover:shadow-md">
         <div className="flex items-center justify-between mb-3">
           <span suppressHydrationWarning className="text-xs font-semibold uppercase tracking-wider text-slate-500">
             ยอดใช้ไฟเดือนนี้ ({summary.currentMonthName})
@@ -59,7 +59,7 @@ export const SummaryCards: React.FC<SummaryCardsProps> = memo(({ summary }) => {
       </div>
 
       {/* Card 2: Monthly Total Cost */}
-      <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex flex-col justify-between transition-all hover:shadow-md">
+      <div className="bg-white rounded-2xl p-5 border border-slate-200/60 shadow-xs flex flex-col justify-between transition-all hover:shadow-md">
         <div className="flex items-center justify-between mb-3">
           <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
             ค่าใช้จ่ายประจำเดือน
@@ -107,7 +107,7 @@ export const SummaryCards: React.FC<SummaryCardsProps> = memo(({ summary }) => {
       </div>
 
       {/* Card 3: Latest Meter Reading & Cycle */}
-      <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex flex-col justify-between transition-all hover:shadow-md sm:col-span-2 lg:col-span-1">
+      <div className="bg-white rounded-2xl p-5 border border-slate-200/60 shadow-xs flex flex-col justify-between transition-all hover:shadow-md sm:col-span-2 lg:col-span-1">
         <div className="flex items-center justify-between mb-3">
           <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
             เลขมิเตอร์ล่าสุด
