@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Settings, LogIn, LogOut, ChevronDown } from "lucide-react";
+import { Settings, LogOut, ChevronDown } from "lucide-react";
 import { UserProfile } from "@/types";
 import { useGoogleAuth } from "@/context/GoogleAuthContext";
 import { KhafaiLogo } from "./KhafaiLogo";
@@ -130,17 +130,6 @@ export const Header: React.FC<HeaderProps> = ({
 
                   {/* Section 1: User Settings */}
                   <div className="py-1 border-b border-slate-100">
-                    <button
-                      onClick={() => {
-                        setIsDropdownOpen(false);
-                        onOpenGoogleLoginModal();
-                      }}
-                      className="w-full flex items-center space-x-2.5 px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 font-medium transition-colors cursor-pointer text-left"
-                    >
-                      <LogIn className="w-4 h-4 text-blue-600 flex-shrink-0" />
-                      <span>สลับบัญชี Google</span>
-                    </button>
-
                     <button
                       onClick={() => {
                         setIsDropdownOpen(false);
