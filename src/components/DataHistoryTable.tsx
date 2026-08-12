@@ -203,35 +203,45 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
           ทั้งหมด
         </button>
 
-        <button
-          onClick={() => {
-            setTimeFilter("custom");
-            setShowCustomInputs(!showCustomInputs);
-          }}
-          className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-            timeFilter === "custom"
-              ? "bg-blue-600 text-white shadow-xs"
-              : "bg-slate-100 hover:bg-slate-200 text-slate-600"
-          }`}
-        >
-          <Calendar className="w-3.5 h-3.5" />
-          <span>เลือกช่วงเวลา</span>
-        </button>
-      </div>
-
-      {/* Custom Date Range Picker Popover */}
-      {timeFilter === "custom" && showCustomInputs && (
-        <div className="mb-3 animate-in fade-in slide-in-from-top-1 duration-150">
-          <CustomDatePickerPopover
-            startDate={customStartDate}
-            endDate={customEndDate}
-            onChange={(start, end) => {
-              setCustomStartDate(start);
-              setCustomEndDate(end);
+        {/* Custom Date Range Floating Button & Popup */}
+        <div className="relative inline-block">
+          <button
+            onClick={() => {
+              setTimeFilter("custom");
+              setShowCustomInputs(!showCustomInputs);
             }}
-          />
+            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+              timeFilter === "custom"
+                ? "bg-blue-600 text-white shadow-xs"
+                : "bg-slate-100 hover:bg-slate-200 text-slate-600"
+            }`}
+          >
+            <Calendar className="w-3.5 h-3.5" />
+            <span>เลือกช่วงเวลา</span>
+          </button>
+
+          {/* Floating Popup attached right under the button */}
+          {timeFilter === "custom" && showCustomInputs && (
+            <>
+              {/* Click outside backdrop overlay */}
+              <div
+                className="fixed inset-0 z-40"
+                onClick={() => setShowCustomInputs(false)}
+              />
+              <div className="absolute left-0 sm:right-0 sm:left-auto top-full mt-2 z-50 animate-in fade-in zoom-in-95 duration-150">
+                <CustomDatePickerPopover
+                  startDate={customStartDate}
+                  endDate={customEndDate}
+                  onChange={(start, end) => {
+                    setCustomStartDate(start);
+                    setCustomEndDate(end);
+                  }}
+                />
+              </div>
+            </>
+          )}
         </div>
-      )}
+      </div>
 
       {filteredLogs.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center py-12 text-slate-400 text-sm">
