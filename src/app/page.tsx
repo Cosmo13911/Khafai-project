@@ -79,6 +79,31 @@ function KhafaiDashboardContent() {
   const [timeFilter, setTimeFilter] = useState<TimeFilterMode>("this_month");
   const [customStartDate, setCustomStartDate] = useState<string>("");
   const [customEndDate, setCustomEndDate] = useState<string>("");
+  const [isFilterChanging, setIsFilterChanging] = useState<boolean>(false);
+
+  const handleTimeFilterChange = useCallback((mode: TimeFilterMode) => {
+    setIsFilterChanging(true);
+    setTimeout(() => {
+      setTimeFilter(mode);
+      setIsFilterChanging(false);
+    }, 100);
+  }, []);
+
+  const handleCustomStartDateChange = useCallback((date: string) => {
+    setIsFilterChanging(true);
+    setTimeout(() => {
+      setCustomStartDate(date);
+      setIsFilterChanging(false);
+    }, 100);
+  }, []);
+
+  const handleCustomEndDateChange = useCallback((date: string) => {
+    setIsFilterChanging(true);
+    setTimeout(() => {
+      setCustomEndDate(date);
+      setIsFilterChanging(false);
+    }, 100);
+  }, []);
 
   // Modals state
   const [isLogFormOpen, setIsLogFormOpen] = useState<boolean>(false);
@@ -513,11 +538,12 @@ function KhafaiDashboardContent() {
                   logs={logs}
                   filteredLogs={filteredLogs}
                   timeFilter={timeFilter}
-                  onTimeFilterChange={setTimeFilter}
+                  isFilterChanging={isFilterChanging}
+                  onTimeFilterChange={handleTimeFilterChange}
                   customStartDate={customStartDate}
-                  onCustomStartDateChange={setCustomStartDate}
+                  onCustomStartDateChange={handleCustomStartDateChange}
                   customEndDate={customEndDate}
-                  onCustomEndDateChange={setCustomEndDate}
+                  onCustomEndDateChange={handleCustomEndDateChange}
                   onOpenAddModal={() => {
                     setEditingLog(null);
                     setIsLogFormOpen(true);
