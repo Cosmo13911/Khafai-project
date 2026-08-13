@@ -145,11 +145,11 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const loginWithDemoAccount = (userId: string, email: string, name: string, picture?: string) => {
     const cleanEmail = email.trim().toLowerCase();
     const demoSession: GoogleUserSession = {
-      User_ID: cleanEmail || userId,
-      Email: cleanEmail || email,
+      User_ID: userId || cleanEmail,
+      Email: cleanEmail,
       Name: name,
       Picture: picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=2563eb&color=fff`,
-      isDemo: true,
+      isDemo: false,
     };
     saveSession(demoSession);
   };
