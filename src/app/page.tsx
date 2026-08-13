@@ -186,6 +186,20 @@ function KhafaiDashboardContent() {
       });
     }
 
+    if (timeFilter === "last_month") {
+      const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const targetYear = prevDate.getFullYear();
+      const targetMonth = prevDate.getMonth();
+      return logs.filter((log) => {
+        const d = new Date(log.Record_Date);
+        return (
+          !isNaN(d.getTime()) &&
+          d.getFullYear() === targetYear &&
+          d.getMonth() === targetMonth
+        );
+      });
+    }
+
     if (timeFilter === "this_week") {
       const d = new Date(now);
       const day = d.getDay();
@@ -225,8 +239,8 @@ function KhafaiDashboardContent() {
 
   // Derived metrics with 0ms memoization
   const summary: SummaryData = useMemo(() => {
-    return calculateSummaryData(logs, user.Current_Rate_Per_Unit);
-  }, [logs, user]);
+    return calculateSummaryData(filteredLogs, user.Current_Rate_Per_Unit, logs, timeFilter);
+  }, [filteredLogs, user.Current_Rate_Per_Unit, logs, timeFilter]);
 
   const monthlyChart: MonthlyChartData[] = useMemo(() => {
     return calculateMonthlyChartData(filteredLogs);

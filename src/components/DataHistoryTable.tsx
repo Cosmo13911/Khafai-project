@@ -17,7 +17,7 @@ import {
 import { MeterLog } from "@/types";
 import { CustomDatePickerPopover } from "./CustomDatePickerPopover";
 
-export type TimeFilterMode = "this_week" | "this_month" | "this_year" | "all" | "custom";
+export type TimeFilterMode = "this_week" | "this_month" | "last_month" | "this_year" | "all" | "custom";
 
 interface DataHistoryTableProps {
   logs: MeterLog[];
@@ -59,6 +59,9 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
   const subtitleText = useMemo(() => {
     if (timeFilter === "this_month") {
       return `${filteredLogs.length} รายการในเดือนนี้ (จากทั้งหมด ${logs.length} รายการ)`;
+    }
+    if (timeFilter === "last_month") {
+      return `${filteredLogs.length} รายการในเดือนก่อนหน้า (จากทั้งหมด ${logs.length} รายการ)`;
     }
     if (timeFilter === "this_week") {
       return `${filteredLogs.length} รายการในสัปดาห์นี้ (จากทั้งหมด ${logs.length} รายการ)`;
@@ -225,6 +228,17 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
             }`}
           >
             เดือนนี้
+          </button>
+
+          <button
+            onClick={() => onTimeFilterChange("last_month")}
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+              timeFilter === "last_month"
+                ? "bg-blue-600 text-white shadow-xs"
+                : "bg-slate-100 hover:bg-slate-200 text-slate-600"
+            }`}
+          >
+            เดือนก่อนหน้า
           </button>
 
           <button

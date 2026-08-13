@@ -146,85 +146,165 @@ export function checkDeleteProtection(
  * Computes Executive Summary metrics:
  * Total units & cost for current month, percentage change vs previous month, cycle count.
  */
-export function calculateSummaryData(
-  logs: MeterLog[],
-  currentRate: number
-): SummaryData {
-  const sorted = sortLogs(logs);
-  const now = new Date();
-  
-  // Format current and previous month key (YYYY-MM)
-  const curYear = now.getFullYear();
-  const curMonthStr = String(now.getMonth() + 1).padStart(2, "0");
-  const currentMonthKey = `${curYear}-${curMonthStr}`;
+/**
+ * Helper: Computes the monthly total units and cost from a set of logs in a given month.
+ * Uses the latest date entry in each meter cycle of that month.
+ */
+export function getMonthlySummaryFromLogs(monthLogs: MeterLog[]): { units: number; cost: number } {
+  if (!monthLogs || monthLogs.length === 0) return { units: 0, cost: 0 };
+  const sorted = sortLogs(monthLogs);
 
-  const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const prevYear = prevDate.getFullYear();
-  const prevMonthStr = String(prevDate.getMonth() + 1).padStart(2, "0");
-  const prevMonthKey = `${prevYear}-${prevMonthStr}`;
-
-  let currentMonthUnits = 0;
-  let currentMonthCost = 0;
-  let prevMonthUnits = 0;
-  let prevMonthCost = 0;
-
-  let totalCyclesCount = 0;
+  // Group by meter cycle (a new cycle starts whenever Is_New_Meter = true)
+  const cycles: MeterLog[][] = [];
+  let currentCycle: MeterLog[] = [];
 
   sorted.forEach((log) => {
-    if (log.Is_New_Meter) totalCyclesCount++;
-
-    const logMonthKey = log.Record_Date.substring(0, 7);
-    if (logMonthKey === currentMonthKey) {
-      currentMonthUnits += log.Units_Used;
-      currentMonthCost += log.Total_Cost;
-    } else if (logMonthKey === prevMonthKey) {
-      prevMonthUnits += log.Units_Used;
-      prevMonthCost += log.Total_Cost;
+    if (log.Is_New_Meter && currentCycle.length > 0) {
+      cycles.push(currentCycle);
+      currentCycle = [log];
+    } else {
+      currentCycle.push(log);
     }
   });
-
-  // Calculate percentage changes
-  let unitsPercentChange: number | null = null;
-  if (prevMonthUnits > 0) {
-    unitsPercentChange = Number(
-      (((currentMonthUnits - prevMonthUnits) / prevMonthUnits) * 100).toFixed(1)
-    );
-  } else if (currentMonthUnits > 0) {
-    unitsPercentChange = 100;
+  if (currentCycle.length > 0) {
+    cycles.push(currentCycle);
   }
 
-  let costPercentChange: number | null = null;
-  if (prevMonthCost > 0) {
-    costPercentChange = Number(
-      (((currentMonthCost - prevMonthCost) / prevMonthCost) * 100).toFixed(1)
-    );
-  } else if (currentMonthCost > 0) {
-    costPercentChange = 100;
-  }
+  let totalUnits = 0;
+  let totalCost = 0;
 
+  // Take the latest record of each cycle in this month
+  cycles.forEach((cycle) => {
+    const latestInCycle = cycle[cycle.length - 1];
+    totalUnits += latestInCycle.Units_Used;
+    totalCost += latestInCycle.Total_Cost;
+  });
+
+  return { units: totalUnits, cost: totalCost };
+}
+
+/**
+ * Computes Executive Summary metrics for any filtered range:
+ * Sums the monthly totals (taken from the latest date of each month) across the period.
+ */
+export function calculateSummaryData(
+  filteredLogs: MeterLog[],
+  currentRate: number,
+  allLogs: MeterLog[] = filteredLogs,
+  filterMode: string = "this_month"
+): SummaryData {
+  const sortedFiltered = sortLogs(filteredLogs);
+  const sortedAll = sortLogs(allLogs);
+
+  // 1. Group filtered logs by YYYY-MM
+  const monthMap: Record<string, MeterLog[]> = {};
+  let periodCyclesCount = 0;
+
+  sortedFiltered.forEach((log) => {
+    if (log.Is_New_Meter) periodCyclesCount++;
+    const mKey = log.Record_Date.substring(0, 7);
+    if (!monthMap[mKey]) monthMap[mKey] = [];
+    monthMap[mKey].push(log);
+  });
+
+  let periodUnits = 0;
+  let periodCost = 0;
+
+  Object.values(monthMap).forEach((mLogs) => {
+    const mSummary = getMonthlySummaryFromLogs(mLogs);
+    periodUnits += mSummary.units;
+    periodCost += mSummary.cost;
+  });
+
+  // 2. Latest log of the filtered period (วันที่มากที่สุดในชุดข้อมูลที่เลือก)
+  const latestFilteredLog = sortedFiltered.length > 0 ? sortedFiltered[sortedFiltered.length - 1] : null;
+  const latestAllLog = sortedAll.length > 0 ? sortedAll[sortedAll.length - 1] : null;
+
+  const activeLatestLog = latestFilteredLog || latestAllLog;
+  const latestMeterReading = activeLatestLog ? activeLatestLog.Meter_Reading : 0;
+  const latestRecordDate = activeLatestLog ? activeLatestLog.Record_Date : "-";
+
+  // 3. Period Labels and Comparisons
+  const now = new Date();
   const monthNamesThai = [
     "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
     "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"
   ];
 
-  const currentMonthName = `${monthNamesThai[now.getMonth()]} ${curYear + 543}`;
-  const prevMonthName = `${monthNamesThai[prevDate.getMonth()]} ${prevYear + 543}`;
+  let currentPeriodLabel = "";
+  let prevPeriodLabel = "เทียบกับเดือนที่แล้ว";
 
-  const latestLog = sorted.length > 0 ? sorted[sorted.length - 1] : null;
-  const latestMeterReading = latestLog ? latestLog.Meter_Reading : 0;
-  const latestRecordDate = latestLog ? latestLog.Record_Date : "-";
+  if (filterMode === "this_month") {
+    const curYear = now.getFullYear();
+    currentPeriodLabel = `เดือนนี้ (${monthNamesThai[now.getMonth()]} ${curYear + 543})`;
+    prevPeriodLabel = "เทียบกับเดือนที่แล้ว";
+  } else if (filterMode === "last_month") {
+    const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    currentPeriodLabel = `เดือนที่แล้ว (${monthNamesThai[prevDate.getMonth()]} ${prevDate.getFullYear() + 543})`;
+    prevPeriodLabel = "เทียบกับเดือนก่อนหน้า";
+  } else if (filterMode === "last_3_months") {
+    currentPeriodLabel = "3 เดือนย้อนหลัง";
+    prevPeriodLabel = "เทียบกับช่วงก่อนหน้า";
+  } else if (filterMode === "this_year") {
+    currentPeriodLabel = `ปีนี้ (${now.getFullYear() + 543})`;
+    prevPeriodLabel = "เทียบกับปีก่อนหน้า";
+  } else if (filterMode === "all") {
+    currentPeriodLabel = "ประวัติทั้งหมด";
+    prevPeriodLabel = "รวมทุกรายการ";
+  } else if (filterMode === "custom") {
+    currentPeriodLabel = "ช่วงเวลาที่เลือก";
+    prevPeriodLabel = "ตามเงื่อนไขค้นหา";
+  } else {
+    currentPeriodLabel = "ช่วงเวลาที่เลือก";
+    prevPeriodLabel = "เทียบกับช่วงก่อนหน้า";
+  }
+
+  // Find previous period comparison from allLogs
+  let prevUnits = 0;
+  let prevCost = 0;
+
+  if (filterMode === "this_month") {
+    const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const prevMonthKey = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, "0")}`;
+    const prevLogs = sortedAll.filter((log) => log.Record_Date.substring(0, 7) === prevMonthKey);
+    const prevSum = getMonthlySummaryFromLogs(prevLogs);
+    prevUnits = prevSum.units;
+    prevCost = prevSum.cost;
+  } else if (filterMode === "last_month") {
+    const prev2Date = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+    const prev2MonthKey = `${prev2Date.getFullYear()}-${String(prev2Date.getMonth() + 1).padStart(2, "0")}`;
+    const prev2Logs = sortedAll.filter((log) => log.Record_Date.substring(0, 7) === prev2MonthKey);
+    const prev2Sum = getMonthlySummaryFromLogs(prev2Logs);
+    prevUnits = prev2Sum.units;
+    prevCost = prev2Sum.cost;
+  }
+
+  // Calculate percentage changes
+  let unitsPercentChange: number | null = null;
+  if (prevUnits > 0) {
+    unitsPercentChange = Number((((periodUnits - prevUnits) / prevUnits) * 100).toFixed(1));
+  } else if (periodUnits > 0 && prevUnits === 0) {
+    unitsPercentChange = 100;
+  }
+
+  let costPercentChange: number | null = null;
+  if (prevCost > 0) {
+    costPercentChange = Number((((periodCost - prevCost) / prevCost) * 100).toFixed(1));
+  } else if (periodCost > 0 && prevCost === 0) {
+    costPercentChange = 100;
+  }
 
   return {
-    currentMonthUnits: Number(currentMonthUnits.toFixed(1)),
-    currentMonthCost: Number(currentMonthCost.toFixed(2)),
-    prevMonthUnits: Number(prevMonthUnits.toFixed(1)),
-    prevMonthCost: Number(prevMonthCost.toFixed(2)),
+    currentMonthUnits: Number(periodUnits.toFixed(1)),
+    currentMonthCost: Number(periodCost.toFixed(2)),
+    prevMonthUnits: Number(prevUnits.toFixed(1)),
+    prevMonthCost: Number(prevCost.toFixed(2)),
     unitsPercentChange,
     costPercentChange,
     currentRate,
-    totalCyclesCount: Math.max(1, totalCyclesCount),
-    currentMonthName,
-    prevMonthName,
+    totalCyclesCount: Math.max(1, periodCyclesCount || 1),
+    currentMonthName: currentPeriodLabel,
+    prevMonthName: prevPeriodLabel,
     latestMeterReading,
     latestRecordDate,
   };
@@ -232,7 +312,7 @@ export function calculateSummaryData(
 
 /**
  * Formats logs into monthly chart data for Recharts Bar Chart
- * Ensures a 6-month trailing window baseline for structural visual balance.
+ * Takes the monthly totals derived from the latest date entry of each month.
  */
 export function calculateMonthlyChartData(logs: MeterLog[]): MonthlyChartData[] {
   const sorted = sortLogs(logs);
@@ -244,14 +324,20 @@ export function calculateMonthlyChartData(logs: MeterLog[]): MonthlyChartData[] 
     "09": "ก.ย.", "10": "ต.ค.", "11": "พ.ย.", "12": "ธ.ค."
   };
 
+  const groupMap: Record<string, MeterLog[]> = {};
   sorted.forEach((log) => {
     const monthKey = log.Record_Date.substring(0, 7); // YYYY-MM
-    if (!monthlyMap[monthKey]) {
-      monthlyMap[monthKey] = { totalUnits: 0, totalCost: 0, logCount: 0 };
-    }
-    monthlyMap[monthKey].totalUnits += log.Units_Used;
-    monthlyMap[monthKey].totalCost += log.Total_Cost;
-    monthlyMap[monthKey].logCount += 1;
+    if (!groupMap[monthKey]) groupMap[monthKey] = [];
+    groupMap[monthKey].push(log);
+  });
+
+  Object.entries(groupMap).forEach(([monthKey, mLogs]) => {
+    const mSummary = getMonthlySummaryFromLogs(mLogs);
+    monthlyMap[monthKey] = {
+      totalUnits: mSummary.units,
+      totalCost: mSummary.cost,
+      logCount: mLogs.length,
+    };
   });
 
   // Ensure trailing 6 months exist in chart data for a complete trend matrix

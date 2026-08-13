@@ -18,7 +18,7 @@ export const SummaryCards: React.FC<SummaryCardsProps> = memo(({ summary }) => {
       <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex flex-col justify-between transition-all hover:shadow-md">
         <div className="flex items-center justify-between mb-3">
           <span suppressHydrationWarning className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            ยอดใช้ไฟเดือนนี้ ({summary.currentMonthName})
+            ยอดใช้ไฟ ({summary.currentMonthName})
           </span>
           <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
             <Zap className="w-5 h-5" />
@@ -51,9 +51,9 @@ export const SummaryCards: React.FC<SummaryCardsProps> = memo(({ summary }) => {
                 {isUnitsUp ? `+${summary.unitsPercentChange}%` : `${summary.unitsPercentChange}%`}
               </span>
             ) : (
-              <span className="text-slate-400 font-medium">ไม่มีข้อมูลเดือนก่อนหน้า</span>
+              <span className="text-slate-400 font-medium">ไม่มีข้อมูลเปรียบเทียบ</span>
             )}
-            <span className="ml-2 text-slate-500">เทียบกับเดือนที่แล้ว</span>
+            <span className="ml-2 text-slate-500">{summary.prevMonthName}</span>
           </div>
         </div>
       </div>
@@ -61,8 +61,8 @@ export const SummaryCards: React.FC<SummaryCardsProps> = memo(({ summary }) => {
       {/* Card 2: Monthly Total Cost */}
       <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex flex-col justify-between transition-all hover:shadow-md">
         <div className="flex items-center justify-between mb-3">
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            ค่าใช้จ่ายประจำเดือน
+          <span suppressHydrationWarning className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+            ค่าใช้จ่าย ({summary.currentMonthName})
           </span>
           <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
             <Banknote className="w-5 h-5" />
@@ -99,9 +99,9 @@ export const SummaryCards: React.FC<SummaryCardsProps> = memo(({ summary }) => {
                 {isCostUp ? `+${summary.costPercentChange}%` : `${summary.costPercentChange}%`}
               </span>
             ) : (
-              <span className="text-slate-400 font-medium">ไม่มีข้อมูลเดือนก่อนหน้า</span>
+              <span className="text-slate-400 font-medium">ไม่มีข้อมูลเปรียบเทียบ</span>
             )}
-            <span className="ml-2 text-slate-500">เทียบกับเดือนที่แล้ว</span>
+            <span className="ml-2 text-slate-500">{summary.prevMonthName}</span>
           </div>
         </div>
       </div>

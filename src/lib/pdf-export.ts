@@ -1,6 +1,32 @@
 import { MeterLog, UserProfile } from "@/types";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { getMonthlySummaryFromLogs } from "./khafai-engine";
+
+/**
+ * Calculates total units and cost for export using the monthly latest-date rule.
+ */
+export function calculateExportSummary(logs: MeterLog[]): { totalUnits: number; totalCost: number } {
+  if (!logs || logs.length === 0) return { totalUnits: 0, totalCost: 0 };
+  
+  const monthMap: Record<string, MeterLog[]> = {};
+  logs.forEach((log) => {
+    const mKey = log.Record_Date.substring(0, 7);
+    if (!monthMap[mKey]) monthMap[mKey] = [];
+    monthMap[mKey].push(log);
+  });
+
+  let totalUnits = 0;
+  let totalCost = 0;
+
+  Object.values(monthMap).forEach((mLogs) => {
+    const mSummary = getMonthlySummaryFromLogs(mLogs);
+    totalUnits += mSummary.units;
+    totalCost += mSummary.cost;
+  });
+
+  return { totalUnits, totalCost };
+}
 
 /**
  * Generates a clean dynamic filename based on active time filter.
@@ -30,6 +56,10 @@ function getExportFilename(filterMode?: string, extension: "pdf" | "csv" = "pdf"
     suffix = `ThisWeek_${todayFormatted}`;
   } else if (filterMode === "this_month") {
     suffix = `ThisMonth_${monthStr}${yearStr}`;
+  } else if (filterMode === "last_month") {
+    const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const prevMonthStr = monthNames[prevDate.getMonth()];
+    suffix = `LastMonth_${prevMonthStr}${prevDate.getFullYear()}`;
   } else if (filterMode === "this_year") {
     suffix = `Year${yearStr}`;
   } else if (filterMode === "all") {
@@ -67,9 +97,22 @@ export function exportToCSV(logs: MeterLog[], user: UserProfile, filterMode?: st
     log.Created_At,
   ]);
 
+  const { totalUnits, totalCost } = calculateExportSummary(logs);
+
+  const summaryRow = [
+    "SUMMARY",
+    "Period Total (Latest Month Reading)",
+    "",
+    totalUnits,
+    user.Current_Rate_Per_Unit,
+    totalCost,
+    "",
+    "",
+  ];
+
   const csvContent =
     "data:text/csv;charset=utf-8,\uFEFF" +
-    [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
+    [headers.join(","), ...rows.map((e) => e.join(",")), "", summaryRow.join(",")].join("\n");
 
   const filename = getExportFilename(filterMode, "csv");
 
@@ -129,6 +172,7 @@ export function exportToPDF(logs: MeterLog[], user: UserProfile, filterMode?: st
 
   // Filter Mode Label Mapping for metadata block
   let filterLabel = "This Month";
+  if (filterMode === "last_month") filterLabel = "Last Month";
   if (filterMode === "this_week") filterLabel = "This Week";
   if (filterMode === "this_year") filterLabel = "This Year";
   if (filterMode === "all") filterLabel = "All History";
@@ -144,8 +188,7 @@ export function exportToPDF(logs: MeterLog[], user: UserProfile, filterMode?: st
   doc.text(`Tariff Rate: ${user.Current_Rate_Per_Unit.toFixed(2)} THB / unit`, 115, 42.5);
 
   // 3. SUMMARY CARDS (3 Horizontal Cards in Grid Layout)
-  const totalUnits = logs.reduce((acc, l) => acc + (Number(l.Units_Used) || 0), 0);
-  const totalCost = logs.reduce((acc, l) => acc + (Number(l.Total_Cost) || 0), 0);
+  const { totalUnits, totalCost } = calculateExportSummary(logs);
 
   const cardY = 51;
   const cardW = 58;
