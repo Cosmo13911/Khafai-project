@@ -15,6 +15,7 @@ import { DeleteProtectionModal } from "@/components/DeleteProtectionModal";
 import { GoogleLoginModal } from "@/components/GoogleLoginModal";
 import { TestApiModal } from "@/components/TestApiModal";
 import { RateLimitLockedState } from "@/components/RateLimitLockedState";
+import { ElectricityLoading } from "@/components/ElectricityLoading";
 import { ToastNotification, ToastMessage } from "@/components/ToastNotification";
 import { exportToCSV, exportToPDF } from "@/lib/pdf-export";
 import {
@@ -525,17 +526,13 @@ function KhafaiDashboardContent() {
 
   if (!isMounted) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="w-10 h-10 rounded-full border-4 border-blue-200 border-t-blue-600 animate-spin" />
-      </div>
+      <ElectricityLoading fullScreen title="กำลังดึงข้อมูล" />
     );
   }
 
   if (isAuthLoading || !isAuthenticated) {
     return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center space-y-4 text-white">
-        <div className="w-10 h-10 rounded-full border-4 border-blue-500/30 border-t-blue-500 animate-spin" />
-      </div>
+      <ElectricityLoading fullScreen dark title="กำลังดึงข้อมูล" />
     );
   }
 
@@ -562,22 +559,7 @@ function KhafaiDashboardContent() {
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {isFetchingInitialData ? (
-          <div className="py-24 flex flex-col items-center justify-center space-y-4">
-            <div className="relative">
-              <div className="w-16 h-16 rounded-full border-4 border-blue-200 border-t-blue-600 animate-spin shadow-md"></div>
-              <div className="absolute inset-0 flex items-center justify-center text-blue-600 font-extrabold text-[10px]">
-                GAS
-              </div>
-            </div>
-            <div className="text-center space-y-1.5 animate-pulse">
-              <h3 className="text-base font-bold text-slate-800 tracking-tight">
-                กำลังเชื่อมต่อและดึงข้อมูลจาก Google Sheets...
-              </h3>
-              <p className="text-xs text-slate-500 font-medium max-w-sm mx-auto">
-                รอซิงค์ข้อมูลให้ครบถ้วน 100% ก่อนแสดงผลเพื่อความแม่นยำสูงสุด
-              </p>
-            </div>
-          </div>
+          <ElectricityLoading />
         ) : (
           <>
             {/* Executive Summary Cards */}

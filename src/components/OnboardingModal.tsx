@@ -69,17 +69,17 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
 
         {/* Onboarding Form */}
         <form onSubmit={handleSubmit} className="mt-6 space-y-4 text-left relative z-10">
-          <div>
+          <div className="w-full max-w-full min-w-0">
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
               วันที่ตั้งต้น (Initial Date)
             </label>
-            <div className="relative">
+            <div className="relative w-full max-w-full min-w-0">
               <input
                 type="date"
                 required
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-300 focus:border-blue-600 focus:bg-white text-slate-900 font-semibold text-sm rounded-xl py-3 px-4 pl-11 focus:outline-hidden transition-colors"
+                className="w-full max-w-full min-w-0 box-border appearance-none bg-slate-50 border border-slate-300 focus:border-blue-600 focus:bg-white text-slate-900 font-semibold text-sm rounded-xl py-3 px-4 pl-11 focus:outline-hidden transition-colors min-h-[44px]"
               />
               <Calendar className="w-5 h-5 text-slate-400 absolute left-3.5 top-3.5 pointer-events-none" />
             </div>

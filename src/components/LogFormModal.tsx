@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { X, Loader2, ToggleRight, Calendar, Hash, AlertTriangle } from "lucide-react";
+import { X, Loader2, ToggleRight, Calendar, Hash, AlertTriangle, Zap } from "lucide-react";
 import { MeterLog } from "@/types";
 import { validateMeterReadingRange } from "@/lib/khafai-engine";
 
@@ -119,21 +119,21 @@ export const LogFormModal: React.FC<LogFormModalProps> = ({
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+        <form onSubmit={handleSubmit} className="mt-5 space-y-4 w-full max-w-full min-w-0 box-border">
           {/* Record Date */}
-          <div>
+          <div className="w-full max-w-full min-w-0">
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
               วันที่บันทึก (ย้อนหลังได้)
             </label>
-            <div className="relative">
+            <div className="relative w-full max-w-full min-w-0">
               <input
                 type="date"
                 required
                 value={recordDate}
                 onChange={(e) => setRecordDate(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-300 focus:border-blue-600 focus:bg-white text-slate-900 font-semibold text-sm rounded-xl py-2.5 px-3 pl-10 focus:outline-hidden transition-colors"
+                className="w-full max-w-full min-w-0 box-border appearance-none bg-slate-50 border border-slate-300 focus:border-blue-600 focus:bg-white text-slate-900 font-semibold text-sm rounded-xl py-2.5 px-3 pl-10 focus:outline-hidden transition-colors min-h-[44px]"
               />
-              <Calendar className="w-4 h-4 text-slate-400 absolute left-3.5 top-3 pointer-events-none" />
+              <Calendar className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5 pointer-events-none" />
             </div>
           </div>
 
@@ -205,7 +205,7 @@ export const LogFormModal: React.FC<LogFormModalProps> = ({
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Zap className="w-4 h-4 text-yellow-300 animate-bounce" />
                   <span>กำลังบันทึก...</span>
                 </>
               ) : (

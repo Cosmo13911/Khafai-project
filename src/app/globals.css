@@ -71,3 +71,35 @@ html, body, * {
 .animate-stagger-hide {
   animation: staggerHide 160ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+/* iOS WebKit Date Input overflow & rendering fixes */
+input[type="date"],
+input[type="datetime-local"],
+input[type="month"],
+input[type="time"] {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: 0;
+}
+
+input[type="date"]::-webkit-date-and-time-value {
+  text-align: left;
+  min-height: 1.4em;
+}
+
+/* Pure CSS Bobbing Dots Animation */
+@keyframes bobbing {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-16px) scale(1.18);
+  }
+}
+
+.animate-bobbing {
+  animation: bobbing 0.75s ease-in-out infinite;
+}

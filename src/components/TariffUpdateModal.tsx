@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { AlertCircle, X, Loader2, CheckCircle2 } from "lucide-react";
+import { AlertCircle, X, Loader2, CheckCircle2, Zap } from "lucide-react";
 
 interface TariffUpdateModalProps {
   isOpen: boolean;
@@ -116,7 +116,7 @@ export const TariffUpdateModal: React.FC<TariffUpdateModalProps> = ({
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Zap className="w-4 h-4 text-yellow-300 animate-bounce" />
                   <span>กำลังบันทึก...</span>
                 </>
               ) : showWarningStep ? (
