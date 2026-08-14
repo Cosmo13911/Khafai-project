@@ -326,9 +326,9 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
                     <th className="py-3.5 px-3 text-left w-[110px] whitespace-nowrap">วันที่บันทึก</th>
                     <th className="py-3.5 px-3 text-right w-[100px] whitespace-nowrap">เลขมิเตอร์</th>
                     <th className="py-3.5 px-3 text-right w-[100px] whitespace-nowrap">หน่วยที่ใช้</th>
-                    <th className="py-3.5 px-3 text-right w-[130px] whitespace-nowrap">ยอดค่าไฟ (บาท)</th>
-                    <th className="py-3.5 px-3 text-left pl-4 w-auto whitespace-nowrap">หมายเหตุ</th>
-                    <th className="py-3.5 px-3 text-center w-[80px] whitespace-nowrap">จัดการ</th>
+                    <th className="py-3.5 px-3 text-right w-[125px] whitespace-nowrap">ยอดค่าไฟ (บาท)</th>
+                    <th className="py-3.5 px-3 text-center w-[125px] whitespace-nowrap">หมายเหตุ</th>
+                    <th className="py-3.5 px-3 text-center w-[75px] whitespace-nowrap">จัดการ</th>
                   </tr>
                 </thead>
               </table>
@@ -360,7 +360,7 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
                             </span>
                           )}
                         </td>
-                        <td className="py-3 px-3 text-right w-[130px] whitespace-nowrap">
+                        <td className="py-3 px-3 text-right w-[125px] whitespace-nowrap">
                           {log.Is_New_Meter || log.Total_Cost === 0 ? (
                             <span className="text-slate-400 font-medium font-mono">
                               <span className="text-slate-500 font-medium mr-0.5">฿</span>0.00
@@ -372,17 +372,17 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
                             </span>
                           )}
                         </td>
-                        <td className="py-3 px-3 text-left pl-4 w-auto whitespace-nowrap">
+                        <td className="py-3 px-3 text-center w-[125px] whitespace-nowrap">
                           {log.Is_New_Meter ? (
-                            <span className="inline-flex items-center text-[11px] font-bold text-blue-700 bg-blue-50 border border-blue-200/80 px-2.5 py-0.5 rounded-full whitespace-nowrap">
+                            <span className="inline-flex items-center justify-center text-[11px] font-bold text-blue-700 bg-blue-50 border border-blue-200/80 px-2.5 py-0.5 rounded-full whitespace-nowrap">
                               <Info className="w-3 h-3 mr-1 text-blue-500 shrink-0" />
                               รอบมิเตอร์ใหม่
                             </span>
                           ) : (
-                            <span className="text-slate-400">-</span>
+                            <span className="text-slate-400 font-medium text-center inline-block">-</span>
                           )}
                         </td>
-                        <td className="py-3 px-3 text-center w-[80px] whitespace-nowrap">
+                        <td className="py-3 px-3 text-center w-[75px] whitespace-nowrap">
                           <div className="flex items-center justify-center space-x-2">
                             <button
                               onClick={() => onOpenEditModal(log)}

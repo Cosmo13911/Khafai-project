@@ -49,12 +49,17 @@ export const LogFormModal: React.FC<LogFormModalProps> = ({
 
   // Real-time Range Validation check as user types
   useEffect(() => {
-    if (!meterReading || isNaN(Number(meterReading))) {
+    if (!meterReading.trim()) {
       setRangeError(null);
       return;
     }
 
     const numVal = Number(meterReading);
+    if (isNaN(numVal) || numVal < 0) {
+      setRangeError("ตัวเลขมิเตอร์ต้องเป็นตัวเลขจำนวนจริงที่มีค่าตั้งแต่ 0 ขึ้นไป (ห้ามติดลบ)");
+      return;
+    }
+
     const validation = validateMeterReadingRange(
       existingLogs,
       numVal,
@@ -75,8 +80,8 @@ export const LogFormModal: React.FC<LogFormModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!meterReading || isNaN(Number(meterReading))) {
-      setRangeError("กรุณากรอกตัวเลขมิเตอร์ไฟฟ้าให้ถูกต้อง");
+    if (!meterReading.trim() || isNaN(Number(meterReading)) || Number(meterReading) < 0) {
+      setRangeError("ตัวเลขมิเตอร์ต้องเป็นตัวเลขจำนวนจริงที่มีค่าตั้งแต่ 0 ขึ้นไป (ห้ามติดลบ)");
       return;
     }
 
@@ -146,6 +151,7 @@ export const LogFormModal: React.FC<LogFormModalProps> = ({
               <input
                 type="number"
                 step="any"
+                min="0"
                 required
                 placeholder="เช่น 2045"
                 value={meterReading}

@@ -58,6 +58,14 @@ export function validateMeterReadingRange(
   isNewMeter: boolean,
   currentLogId?: string
 ): { isValid: boolean; minAllowed?: number; maxAllowed?: number; errorMessage?: string } {
+  // 1. Strict Numeric & Positive Value Check (ป้องกันเลขติดลบ, ตัวอักษร, ค่า NaN)
+  if (typeof proposedReading !== "number" || isNaN(proposedReading) || proposedReading < 0) {
+    return {
+      isValid: false,
+      errorMessage: "ตัวเลขมิเตอร์ต้องเป็นตัวเลขจำนวนจริงที่มีค่าตั้งแต่ 0 ขึ้นไป",
+    };
+  }
+
   // Filter out the log being edited
   const filtered = logs.filter((l) => l.Log_ID !== currentLogId);
   const sorted = sortLogs(filtered);
@@ -148,39 +156,25 @@ export function checkDeleteProtection(
  */
 /**
  * Helper: Computes the monthly total units and cost from a set of logs in a given month.
- * Uses the latest date entry in each meter cycle of that month.
+ * Sums all units used and total costs of the logs recorded in this month,
+ * accurately capturing (End of this month reading - End of previous month reading)
+ * even when multiple intermediate readings exist in the month.
  */
 export function getMonthlySummaryFromLogs(monthLogs: MeterLog[]): { units: number; cost: number } {
   if (!monthLogs || monthLogs.length === 0) return { units: 0, cost: 0 };
-  const sorted = sortLogs(monthLogs);
-
-  // Group by meter cycle (a new cycle starts whenever Is_New_Meter = true)
-  const cycles: MeterLog[][] = [];
-  let currentCycle: MeterLog[] = [];
-
-  sorted.forEach((log) => {
-    if (log.Is_New_Meter && currentCycle.length > 0) {
-      cycles.push(currentCycle);
-      currentCycle = [log];
-    } else {
-      currentCycle.push(log);
-    }
-  });
-  if (currentCycle.length > 0) {
-    cycles.push(currentCycle);
-  }
-
+  
   let totalUnits = 0;
   let totalCost = 0;
 
-  // Take the latest record of each cycle in this month
-  cycles.forEach((cycle) => {
-    const latestInCycle = cycle[cycle.length - 1];
-    totalUnits += latestInCycle.Units_Used;
-    totalCost += latestInCycle.Total_Cost;
+  monthLogs.forEach((log) => {
+    totalUnits += Number(log.Units_Used || 0);
+    totalCost += Number(log.Total_Cost || 0);
   });
 
-  return { units: totalUnits, cost: totalCost };
+  return {
+    units: Number(totalUnits.toFixed(1)),
+    cost: Number(totalCost.toFixed(2)),
+  };
 }
 
 /**
@@ -236,18 +230,23 @@ export function calculateSummaryData(
 
   if (filterMode === "this_month") {
     const curYear = now.getFullYear();
+    const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     currentPeriodLabel = `เดือนนี้ (${monthNamesThai[now.getMonth()]} ${curYear + 543})`;
-    prevPeriodLabel = "เทียบกับเดือนที่แล้ว";
+    prevPeriodLabel = `เทียบกับ ${monthNamesThai[prevDate.getMonth()]}`;
   } else if (filterMode === "last_month") {
     const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const prev2Date = new Date(now.getFullYear(), now.getMonth() - 2, 1);
     currentPeriodLabel = `เดือนที่แล้ว (${monthNamesThai[prevDate.getMonth()]} ${prevDate.getFullYear() + 543})`;
-    prevPeriodLabel = "เทียบกับเดือนก่อนหน้า";
+    prevPeriodLabel = `เทียบกับ ${monthNamesThai[prev2Date.getMonth()]}`;
+  } else if (filterMode === "this_week") {
+    currentPeriodLabel = "สัปดาห์นี้";
+    prevPeriodLabel = "เทียบกับสัปดาห์ก่อน";
   } else if (filterMode === "last_3_months") {
     currentPeriodLabel = "3 เดือนย้อนหลัง";
     prevPeriodLabel = "เทียบกับช่วงก่อนหน้า";
   } else if (filterMode === "this_year") {
     currentPeriodLabel = `ปีนี้ (${now.getFullYear() + 543})`;
-    prevPeriodLabel = "เทียบกับปีก่อนหน้า";
+    prevPeriodLabel = `เทียบกับปี ${now.getFullYear() + 543 - 1}`;
   } else if (filterMode === "all") {
     currentPeriodLabel = "ประวัติทั้งหมด";
     prevPeriodLabel = "รวมทุกรายการ";

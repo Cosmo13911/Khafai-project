@@ -1,7 +1,7 @@
 import { MeterLog, UserProfile } from "@/types";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { getMonthlySummaryFromLogs } from "./khafai-engine";
+import { getMonthlySummaryFromLogs, calculateMonthlyChartData } from "./khafai-engine";
 
 /**
  * Calculates total units and cost for export using the monthly latest-date rule.
@@ -101,7 +101,7 @@ export function exportToCSV(logs: MeterLog[], user: UserProfile, filterMode?: st
 
   const summaryRow = [
     "SUMMARY",
-    "Period Total (Latest Month Reading)",
+    "Period Total",
     "",
     totalUnits,
     user.Current_Rate_Per_Unit,
@@ -255,7 +255,14 @@ export function exportToPDF(logs: MeterLog[], user: UserProfile, filterMode?: st
 
   // 4. TABLE DESIGN (Soft Light Header Style & Proper Alignments)
   const tableHeaders = [
-    ["RECORD DATE", "METER READING", "UNITS USED", "TARIFF RATE", "TOTAL COST", "CYCLE NOTE"],
+    [
+      { content: "RECORD DATE", styles: { halign: "left" as const } },
+      { content: "METER READING", styles: { halign: "right" as const } },
+      { content: "UNITS USED", styles: { halign: "right" as const } },
+      { content: "TARIFF RATE", styles: { halign: "right" as const } },
+      { content: "TOTAL COST", styles: { halign: "right" as const } },
+      { content: "CYCLE NOTE", styles: { halign: "center" as const } },
+    ],
   ];
 
   const tableData = logs.map((log) => [
@@ -270,7 +277,10 @@ export function exportToPDF(logs: MeterLog[], user: UserProfile, filterMode?: st
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     })} THB`,
-    log.Is_New_Meter ? "New Cycle (Baseline)" : "-",
+    {
+      content: log.Is_New_Meter ? "New Cycle (Baseline)" : "-",
+      styles: { halign: "center" as const },
+    },
   ]);
 
   autoTable(doc, {
@@ -300,7 +310,7 @@ export function exportToPDF(logs: MeterLog[], user: UserProfile, filterMode?: st
       2: { halign: "right" }, // Units Used
       3: { halign: "right" }, // Tariff Rate
       4: { halign: "right" }, // Total Cost
-      5: { halign: "left" }, // Cycle Note
+      5: { halign: "center" }, // Cycle Note
     },
   });
 

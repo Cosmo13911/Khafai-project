@@ -266,6 +266,10 @@ function recalculateUserLogs(userId, currentRate) {
 }
 
 function validateRange(logs, proposedReading, proposedDate, isNewMeter, excludeLogId) {
+  if (typeof proposedReading !== "number" || isNaN(proposedReading) || proposedReading < 0) {
+    return { isValid: false, errorMessage: "ตัวเลขมิเตอร์ต้องเป็นตัวเลขจำนวนจริงที่มีค่าตั้งแต่ 0 ขึ้นไป" };
+  }
+
   const filtered = logs.filter(function(l) { return l.Log_ID !== excludeLogId; });
   const sorted = sortLogsArray(filtered);
   let prevLog = null, nextLog = null;

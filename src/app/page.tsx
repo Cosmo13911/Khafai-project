@@ -10,6 +10,7 @@ import { SummaryCards } from "@/components/SummaryCards";
 import { MonthlyTrendChart } from "@/components/MonthlyTrendChart";
 import { DataHistoryTable, TimeFilterMode } from "@/components/DataHistoryTable";
 import { LogFormModal } from "@/components/LogFormModal";
+import { OnboardingModal } from "@/components/OnboardingModal";
 import { TariffUpdateModal } from "@/components/TariffUpdateModal";
 import { DeleteProtectionModal } from "@/components/DeleteProtectionModal";
 import { GoogleLoginModal } from "@/components/GoogleLoginModal";
@@ -137,6 +138,7 @@ function KhafaiDashboardContent() {
 
   // Modals state
   const [isLogFormOpen, setIsLogFormOpen] = useState<boolean>(false);
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState<boolean>(false);
   const [editingLog, setEditingLog] = useState<MeterLog | null>(null);
 
   const [isTariffModalOpen, setIsTariffModalOpen] = useState<boolean>(false);
@@ -308,6 +310,10 @@ function KhafaiDashboardContent() {
           setUser(updatedUser);
           setLogs(updatedLogs);
           saveLocalCache(userId, updatedUser, updatedLogs);
+
+          if (updatedLogs.length === 0 && !sessionStorage.getItem(`onboarding_dismissed_${userId}`)) {
+            setIsOnboardingOpen(true);
+          }
         } else if (data.error === "ACCOUNT_LOCKED") {
           addToast("error", "ระบบถูกระงับชั่วคราว", "เข้าสู่สถานะถูกล็อก");
         }
@@ -326,6 +332,19 @@ function KhafaiDashboardContent() {
       fetchData(currentUserId, true, currentEmail, currentName, currentPicture);
     }
   }, [currentUserId, currentEmail, currentName, currentPicture, fetchData]);
+
+  const handleCompleteOnboarding = async (baselineReading: number, startDate: string) => {
+    setIsOnboardingOpen(false);
+    if (currentUserId) {
+      sessionStorage.setItem(`onboarding_dismissed_${currentUserId}`, "true");
+    }
+    await handleSaveLog({
+      Record_Date: startDate,
+      Meter_Reading: baselineReading,
+      Is_New_Meter: true,
+    });
+    addToast("success", "ตั้งค่าเลขมิเตอร์เริ่มต้นเรียบร้อยแล้ว", "เริ่มต้นการใช้งานสำเร็จ");
+  };
 
   // 0ms Optimistic UI Save Log Handler + Server & GAS Database Persistence
   const handleSaveLog = async (formData: {
@@ -622,6 +641,19 @@ function KhafaiDashboardContent() {
         onClose={() => setIsTestApiOpen(false)}
         user={user}
         onRefreshDashboard={() => fetchData(currentUserId, true)}
+      />
+
+      {/* Initial Baseline Reading Onboarding Modal */}
+      <OnboardingModal
+        isOpen={isOnboardingOpen}
+        onClose={() => {
+          setIsOnboardingOpen(false);
+          if (currentUserId) {
+            sessionStorage.setItem(`onboarding_dismissed_${currentUserId}`, "true");
+          }
+        }}
+        onCompleteOnboarding={handleCompleteOnboarding}
+        isLoading={isLoading}
       />
 
       {/* Google Login Modal */}
