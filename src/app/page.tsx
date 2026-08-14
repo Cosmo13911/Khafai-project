@@ -2,8 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { GoogleOAuthProvider } from "@react-oauth/google";
-import { GoogleAuthProvider, useGoogleAuth } from "@/context/GoogleAuthContext";
+import { useGoogleAuth } from "@/context/GoogleAuthContext";
 import { UserProfile, MeterLog, SummaryData, MonthlyChartData, RateLimitStatus } from "@/types";
 import { Header } from "@/components/Header";
 import { SummaryCards } from "@/components/SummaryCards";
@@ -18,7 +17,6 @@ import { TestApiModal } from "@/components/TestApiModal";
 import { RateLimitLockedState } from "@/components/RateLimitLockedState";
 import { ElectricityLoading } from "@/components/ElectricityLoading";
 import { ToastNotification, ToastMessage } from "@/components/ToastNotification";
-import { exportToCSV, exportToPDF } from "@/lib/pdf-export";
 import {
   recalculateLogs,
   calculateSummaryData,
@@ -72,7 +70,7 @@ export function saveLocalCache(userId: string, user: UserProfile, logs: MeterLog
   }
 }
 
-function KhafaiDashboardContent() {
+export default function KhafaiDashboard() {
   const router = useRouter();
   const { session, isAuthenticated, isLoading: isAuthLoading } = useGoogleAuth();
   const currentUserId = session?.User_ID || "";
@@ -100,7 +98,7 @@ function KhafaiDashboardContent() {
     hasCompletedOnboarding: true,
   });
 
-  const [isFetchingInitialData, setIsFetchingInitialData] = useState<boolean>(true);
+  const [isFetchingInitialData, setIsFetchingInitialData] = useState<boolean>(false);
   const [logs, setLogs] = useState<MeterLog[]>([]);
   const [rateLimit, setRateLimit] = useState<RateLimitStatus | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -150,13 +148,14 @@ function KhafaiDashboardContent() {
   const [isGoogleLoginOpen, setIsGoogleLoginOpen] = useState<boolean>(false);
   const [isTestApiOpen, setIsTestApiOpen] = useState<boolean>(false);
 
-  // Read LocalStorage cache or reset state when switching user
+  // Read LocalStorage cache or reset state when switching user (0ms Instant Load)
   useEffect(() => {
     if (!currentUserId) return;
     const cached = getLocalCache(currentUserId);
     if (cached) {
       setUser(cached.user);
       setLogs(cached.logs);
+      setIsFetchingInitialData(false);
     } else {
       setUser({
         User_ID: currentUserId,
@@ -166,6 +165,7 @@ function KhafaiDashboardContent() {
         hasCompletedOnboarding: true,
       });
       setLogs([]);
+      setIsFetchingInitialData(true);
     }
   }, [currentUserId, currentEmail]);
 
@@ -257,7 +257,24 @@ function KhafaiDashboardContent() {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
-  // Fetch real data strictly for currentUserId from API & Google Sheets database
+  const getAuthHeaders = useCallback(
+    (extra: Record<string, string> = {}) => {
+      const headers: Record<string, string> = {
+        "x-user-id": currentUserId,
+        "x-user-email": currentEmail,
+        "x-user-name": encodeURIComponent(currentName),
+        "x-user-picture": encodeURIComponent(currentPicture),
+        ...extra,
+      };
+      if (session?.idToken) {
+        headers["Authorization"] = `Bearer ${session.idToken}`;
+      }
+      return headers;
+    },
+    [currentUserId, currentEmail, currentName, currentPicture, session?.idToken]
+  );
+
+  // Fetch real data strictly for currentUserId from API (SWR Non-blocking pattern)
   const fetchData = useCallback(
     async (userId: string, forceFetch = false, emailOverride?: string, nameOverride?: string, pictureOverride?: string) => {
       if (!userId) return;
@@ -266,25 +283,28 @@ function KhafaiDashboardContent() {
       const activePicture = pictureOverride || currentPicture;
 
       setIsLoading(true);
-      if (forceFetch) {
-        setIsFetchingInitialData(true);
-      }
-      // Load local cache immediately for instant UI responsiveness
       const cached = getLocalCache(userId);
       if (cached && !forceFetch) {
         setUser(cached.user);
         setLogs(cached.logs);
+        setIsFetchingInitialData(false);
+      } else if (forceFetch) {
+        setIsFetchingInitialData(true);
       }
 
       try {
+        const headers: Record<string, string> = {
+          "x-user-id": userId,
+          "x-user-email": activeEmail,
+          "x-user-name": encodeURIComponent(activeName),
+          "x-user-picture": encodeURIComponent(activePicture),
+        };
+        if (session?.idToken) {
+          headers["Authorization"] = `Bearer ${session.idToken}`;
+        }
+
         const res = await fetch("/api/meter-logs", {
-          headers: {
-            "x-user-id": userId,
-            "x-user-email": activeEmail,
-            "x-user-name": encodeURIComponent(activeName),
-            "x-user-picture": encodeURIComponent(activePicture),
-          },
-          cache: "no-store",
+          headers,
         });
         const data = await res.json();
 
@@ -324,12 +344,12 @@ function KhafaiDashboardContent() {
         setIsFetchingInitialData(false);
       }
     },
-    [currentEmail, currentName, currentPicture]
+    [currentEmail, currentName, currentPicture, session?.idToken]
   );
 
   useEffect(() => {
     if (currentUserId) {
-      fetchData(currentUserId, true, currentEmail, currentName, currentPicture);
+      fetchData(currentUserId, false, currentEmail, currentName, currentPicture);
     }
   }, [currentUserId, currentEmail, currentName, currentPicture, fetchData]);
 
@@ -393,11 +413,7 @@ function KhafaiDashboardContent() {
 
       const res = await fetch(url, {
         method,
-        headers: {
-          "Content-Type": "application/json",
-          "x-user-id": currentUserId,
-          "x-user-email": currentEmail,
-        },
+        headers: getAuthHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify(formData),
       });
 
@@ -439,50 +455,48 @@ function KhafaiDashboardContent() {
     try {
       const res = await fetch("/api/user", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-user-id": currentUserId,
-          "x-user-email": currentEmail,
-        },
-        body: JSON.stringify({ Current_Rate_Per_Unit: newRate, Email: currentEmail }),
+        headers: getAuthHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({
+          Current_Rate_Per_Unit: newRate,
+          Email: currentEmail || user.Email,
+        }),
       });
 
       const data = await res.json();
-      if (data.success && data.user) {
-        setUser(data.user);
-        saveLocalCache(currentUserId, data.user, updatedLogs);
-        addToast("success", `ปรับเปลี่ยนอัตราค่าไฟเป็น ฿${newRate.toFixed(2)} /หน่วย เรียบร้อยแล้ว`);
+      if (data.rateLimit) setRateLimit(data.rateLimit);
+
+      if (data.success) {
+        addToast(
+          "success",
+          `ปรับอัตราค่าไฟเป็น ฿${newRate.toFixed(2)}/หน่วย และคำนวณย้อนหลังใหม่ทั้งหมดเรียบร้อยแล้ว`
+        );
       } else {
-        addToast("error", data.message || "ไม่สามารถอัปเดตอัตราค่าไฟในฐานข้อมูลได้");
+        addToast("error", data.message || "ไม่สามารถบันทึกอัตราค่าไฟใหม่ได้");
       }
     } catch {
-      addToast("error", "ไม่สามารถเชื่อมต่อเพื่อบันทึกอัตราค่าไฟได้");
+      addToast("error", "เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
     } finally {
       setIsLoading(false);
     }
   };
 
-  // 0ms Optimistic Delete Handler + Local Cache Persistence
   const handleOpenDeleteModal = (log: MeterLog) => {
-    setTargetDeleteLog(log);
-    const deleteCheck = checkDeleteProtection(logs, log.Log_ID);
-    if (!deleteCheck.canDelete) {
-      setDeleteBlockedMessage(deleteCheck.message || "ไม่สามารถลบรายการนี้ได้");
-    } else {
-      setDeleteBlockedMessage(null);
+    const check = checkDeleteProtection(logs, log.Log_ID);
+    if (!check.canDelete) {
+      setDeleteBlockedMessage(check.message || "ไม่สามารถลบข้อมูลนี้ได้");
+      setTargetDeleteLog(log);
+      setIsDeleteModalOpen(true);
+      return;
     }
+
+    setDeleteBlockedMessage(null);
+    setTargetDeleteLog(log);
     setIsDeleteModalOpen(true);
   };
 
-  const handleConfirmDelete = async () => {
-    if (!targetDeleteLog) return;
-    const logId = targetDeleteLog.Log_ID;
-    const currentRate = user.Current_Rate_Per_Unit;
-
-    const filteredLogs = recalculateLogs(
-      logs.filter((l) => l.Log_ID !== logId),
-      currentRate
-    );
+  // 0ms Optimistic Delete Handler
+  const handleExecuteDelete = async (logId: string) => {
+    const filteredLogs = logs.filter((l) => l.Log_ID !== logId);
 
     setLogs(filteredLogs);
     saveLocalCache(currentUserId, user, filteredLogs);
@@ -494,10 +508,7 @@ function KhafaiDashboardContent() {
     try {
       const res = await fetch(`/api/meter-logs/${logId}`, {
         method: "DELETE",
-        headers: {
-          "x-user-id": currentUserId,
-          "x-user-email": currentEmail,
-        },
+        headers: getAuthHeaders(),
       });
 
       const data = await res.json();
@@ -521,10 +532,7 @@ function KhafaiDashboardContent() {
     try {
       await fetch("/api/rate-limit/reset", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-user-id": currentUserId,
-        },
+        headers: getAuthHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ resetData: true }),
       });
       if (typeof window !== "undefined") {
@@ -545,10 +553,7 @@ function KhafaiDashboardContent() {
     try {
       await fetch("/api/rate-limit/reset", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-user-id": currentUserId,
-        },
+        headers: getAuthHeaders({ "Content-Type": "application/json" }),
       });
       await fetchData(currentUserId, true);
       addToast("success", "ปลดล็อกระบบเรียบร้อยแล้ว");
@@ -595,7 +600,7 @@ function KhafaiDashboardContent() {
           <ElectricityLoading />
         ) : (
           <>
-            {/* Executive Summary Cards */}
+            {/* Executive Summary Cards with Smooth Number Counter Animation */}
             <SummaryCards summary={summary} />
 
             {/* 2-Column Responsive Layout for Chart and Table */}
@@ -626,8 +631,14 @@ function KhafaiDashboardContent() {
                     setIsLogFormOpen(true);
                   }}
                   onConfirmDelete={handleOpenDeleteModal}
-                  onExportCSV={(customLogs) => exportToCSV(customLogs || filteredLogs, user, timeFilter)}
-                  onExportPDF={(customLogs) => exportToPDF(customLogs || filteredLogs, user, timeFilter)}
+                  onExportCSV={async (customLogs) => {
+                    const { exportToCSV } = await import("@/lib/pdf-export");
+                    exportToCSV(customLogs || filteredLogs, user, timeFilter);
+                  }}
+                  onExportPDF={async (customLogs) => {
+                    const { exportToPDF } = await import("@/lib/pdf-export");
+                    exportToPDF(customLogs || filteredLogs, user, timeFilter);
+                  }}
                 />
               </div>
             </div>
@@ -643,26 +654,34 @@ function KhafaiDashboardContent() {
         onRefreshDashboard={() => fetchData(currentUserId, true)}
       />
 
-      {/* Initial Baseline Reading Onboarding Modal */}
-      <OnboardingModal
-        isOpen={isOnboardingOpen}
+      {/* Delete Protection Warning Modal */}
+      <DeleteProtectionModal
+        isOpen={isDeleteModalOpen}
         onClose={() => {
-          setIsOnboardingOpen(false);
-          if (currentUserId) {
-            sessionStorage.setItem(`onboarding_dismissed_${currentUserId}`, "true");
+          setIsDeleteModalOpen(false);
+          setTargetDeleteLog(null);
+          setDeleteBlockedMessage(null);
+        }}
+        onConfirmDelete={async () => {
+          if (targetDeleteLog && !deleteBlockedMessage) {
+            await handleExecuteDelete(targetDeleteLog.Log_ID);
           }
         }}
-        onCompleteOnboarding={handleCompleteOnboarding}
+        targetLog={targetDeleteLog}
+        blockedMessage={deleteBlockedMessage}
         isLoading={isLoading}
       />
 
-      {/* Google Login Modal */}
-      <GoogleLoginModal
-        isOpen={isGoogleLoginOpen || (isMounted && !isAuthenticated && !session)}
-        onClose={() => setIsGoogleLoginOpen(false)}
+      {/* Tariff Rate Modal */}
+      <TariffUpdateModal
+        isOpen={isTariffModalOpen}
+        onClose={() => setIsTariffModalOpen(false)}
+        currentRate={user.Current_Rate_Per_Unit}
+        onSaveRate={handleSaveTariffRate}
+        isLoading={isLoading}
       />
 
-      {/* Create / Edit Meter Log Modal */}
+      {/* Add / Edit Meter Log Modal */}
       <LogFormModal
         isOpen={isLogFormOpen}
         onClose={() => {
@@ -675,35 +694,22 @@ function KhafaiDashboardContent() {
         isLoading={isLoading}
       />
 
-      {/* Tariff Update Modal with Confirmation Warning */}
-      <TariffUpdateModal
-        isOpen={isTariffModalOpen}
-        onClose={() => setIsTariffModalOpen(false)}
-        currentRate={user.Current_Rate_Per_Unit}
-        onSaveRate={handleSaveTariffRate}
+      {/* Onboarding Modal */}
+      <OnboardingModal
+        isOpen={isOnboardingOpen}
+        onClose={() => setIsOnboardingOpen(false)}
+        onCompleteOnboarding={handleCompleteOnboarding}
         isLoading={isLoading}
       />
 
-      {/* Delete Protection Alert Modal */}
-      <DeleteProtectionModal
-        isOpen={isDeleteModalOpen}
-        onClose={() => {
-          setIsDeleteModalOpen(false);
-          setTargetDeleteLog(null);
-          setDeleteBlockedMessage(null);
-        }}
-        onConfirmDelete={handleConfirmDelete}
-        targetLog={targetDeleteLog}
-        blockedMessage={deleteBlockedMessage}
-        isLoading={isLoading}
+      {/* Google Login Account Modal */}
+      <GoogleLoginModal
+        isOpen={isGoogleLoginOpen}
+        onClose={() => setIsGoogleLoginOpen(false)}
       />
 
       {/* Toast Notifications */}
       <ToastNotification toasts={toasts} onDismiss={handleDismissToast} />
     </div>
   );
-}
-
-export default function KhafaiDashboard() {
-  return <KhafaiDashboardContent />;
 }

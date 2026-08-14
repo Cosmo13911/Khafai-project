@@ -13,6 +13,8 @@ import {
   validateMeterReadingRange,
 } from "@/lib/khafai-engine";
 import { callGasApi } from "@/lib/gas-client";
+import { verifyServerAuth, verifyCsrfOrigin } from "@/lib/auth-server";
+import { getServerCache, setServerCache, invalidateServerCache } from "@/lib/server-cache";
 import { MeterLog, UserProfile } from "@/types";
 
 interface GasResponse {
@@ -24,11 +26,28 @@ interface GasResponse {
 }
 
 export async function GET(req: NextRequest) {
-  const userEmail = req.headers.get("x-user-email") || req.nextUrl.searchParams.get("email") || "";
-  const userId = req.headers.get("x-user-id") || userEmail || "";
-  const userName = req.headers.get("x-user-name") || req.nextUrl.searchParams.get("name") || "";
-  const userPicture = req.headers.get("x-user-picture") || "";
+  // 1. Server-Side Authentication & Token Verification
+  const authUser = await verifyServerAuth(req);
+  if (!authUser) {
+    return NextResponse.json(
+      { success: false, error: "UNAUTHORIZED", message: "กรุณาเข้าสู่ระบบก่อนดำเนินการ" },
+      { status: 401 }
+    );
+  }
+
+  const { userId, email: userEmail, name: userName, picture: userPicture } = authUser;
   const rateLimit = checkRateLimit(userId, "read");
+
+  // 2. High-Speed Server Cache Layer (< 15ms response)
+  const cacheKey = `user_data_${userId}`;
+  const cachedData = getServerCache<Record<string, unknown>>(cacheKey);
+  if (cachedData) {
+    return NextResponse.json({
+      ...cachedData,
+      rateLimit,
+      fromCache: true,
+    });
+  }
 
   let user = getUserProfile(userId, userEmail, userName, userPicture);
   let logs = getMeterLogs(userId);
@@ -60,7 +79,7 @@ export async function GET(req: NextRequest) {
   const summary = calculateSummaryData(logs, user.Current_Rate_Per_Unit);
   const monthlyChart = calculateMonthlyChartData(logs);
 
-  return NextResponse.json({
+  const responsePayload = {
     success: true,
     user,
     logs,
@@ -68,14 +87,33 @@ export async function GET(req: NextRequest) {
     monthlyChart,
     rateLimit,
     isGasConnected,
-  });
+  };
+
+  // Cache in server memory for 60 seconds
+  setServerCache(cacheKey, responsePayload, 60);
+
+  return NextResponse.json(responsePayload);
 }
 
 export async function POST(req: NextRequest) {
-  const userEmail = req.headers.get("x-user-email") || "";
-  const userId = req.headers.get("x-user-id") || userEmail || "";
-  const userName = req.headers.get("x-user-name") || "";
-  const userPicture = req.headers.get("x-user-picture") || "";
+  // 1. CSRF Protection for mutating requests
+  if (!verifyCsrfOrigin(req)) {
+    return NextResponse.json(
+      { success: false, error: "CSRF_FORBIDDEN", message: "Invalid request origin" },
+      { status: 403 }
+    );
+  }
+
+  // 2. Server-Side Authentication & Token Verification
+  const authUser = await verifyServerAuth(req);
+  if (!authUser) {
+    return NextResponse.json(
+      { success: false, error: "UNAUTHORIZED", message: "กรุณาเข้าสู่ระบบก่อนดำเนินการ" },
+      { status: 401 }
+    );
+  }
+
+  const { userId, email: userEmail, name: userName, picture: userPicture } = authUser;
   const rateLimit = checkRateLimit(userId, "write");
 
   if (rateLimit.isLocked) {
@@ -115,6 +153,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Invalidate server cache on mutation
+    invalidateServerCache(`user_data_${userId}`);
+
     // Fast optimistic local creation
     let created = createMeterLog(userId, {
       Record_Date: body.Record_Date,
@@ -143,19 +184,17 @@ export async function POST(req: NextRequest) {
       if (gasRes?.success && Array.isArray(gasRes.logs)) {
         isGasConnected = true;
         updatedLogs = syncMeterLogsFromGas(userId, gasRes.logs);
-        const match = updatedLogs.find(
-          (l) => l.Record_Date === body.Record_Date && l.Meter_Reading === Number(body.Meter_Reading)
-        );
+        const match = updatedLogs.find((l) => l.Record_Date === body.Record_Date);
         if (match) created = match;
       }
     } catch (err) {
-      console.warn("GAS save error in POST:", err);
+      console.warn("GAS create error in POST:", err);
     }
 
     const summary = calculateSummaryData(updatedLogs, updatedUser.Current_Rate_Per_Unit);
     const monthlyChart = calculateMonthlyChartData(updatedLogs);
 
-    return NextResponse.json({
+    const responsePayload = {
       success: true,
       user: updatedUser,
       log: created,
@@ -164,7 +203,12 @@ export async function POST(req: NextRequest) {
       monthlyChart,
       rateLimit,
       isGasConnected,
-    });
+    };
+
+    // Re-prime fresh server cache
+    setServerCache(`user_data_${userId}`, responsePayload, 60);
+
+    return NextResponse.json(responsePayload);
   } catch (error: unknown) {
     const errMessage = error instanceof Error ? error.message : "Failed to create log";
     return NextResponse.json(

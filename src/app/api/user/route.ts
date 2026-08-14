@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getUserProfile, updateUserProfile, syncUserProfileFromGas } from "@/lib/database";
 import { checkRateLimit } from "@/lib/rate-limiter";
 import { callGasApi } from "@/lib/gas-client";
+import { verifyServerAuth, verifyCsrfOrigin } from "@/lib/auth-server";
+import { invalidateServerCache } from "@/lib/server-cache";
 import { UserProfile } from "@/types";
 
 interface GasResponse {
@@ -10,10 +12,16 @@ interface GasResponse {
 }
 
 export async function GET(req: NextRequest) {
-  const userEmail = req.headers.get("x-user-email") || "";
-  const userId = req.headers.get("x-user-id") || userEmail || "";
-  const userName = req.headers.get("x-user-name") || "";
-  const userPicture = req.headers.get("x-user-picture") || "";
+  // 1. Server-side Authentication & Token Verification
+  const authUser = await verifyServerAuth(req);
+  if (!authUser) {
+    return NextResponse.json(
+      { success: false, error: "UNAUTHORIZED", message: "กรุณาเข้าสู่ระบบก่อนดำเนินการ" },
+      { status: 401 }
+    );
+  }
+
+  const { userId, email: userEmail, name: userName, picture: userPicture } = authUser;
   const rateLimit = checkRateLimit(userId, "read");
   let user = getUserProfile(userId, userEmail, userName, userPicture);
   let isGasConnected = false;
@@ -44,10 +52,24 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const userEmail = req.headers.get("x-user-email") || "";
-  const userId = req.headers.get("x-user-id") || userEmail || "";
-  const userName = req.headers.get("x-user-name") || "";
-  const userPicture = req.headers.get("x-user-picture") || "";
+  // 1. CSRF Protection
+  if (!verifyCsrfOrigin(req)) {
+    return NextResponse.json(
+      { success: false, error: "CSRF_FORBIDDEN", message: "Invalid request origin" },
+      { status: 403 }
+    );
+  }
+
+  // 2. Server-side Authentication & Token Verification
+  const authUser = await verifyServerAuth(req);
+  if (!authUser) {
+    return NextResponse.json(
+      { success: false, error: "UNAUTHORIZED", message: "กรุณาเข้าสู่ระบบก่อนดำเนินการ" },
+      { status: 401 }
+    );
+  }
+
+  const { userId, email: userEmail, name: userName, picture: userPicture } = authUser;
   const rateLimit = checkRateLimit(userId, "write");
 
   if (rateLimit.isLocked) {
@@ -64,6 +86,10 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
+
+    // Invalidate user data cache when tariff / user profile changes
+    invalidateServerCache(`user_data_${userId}`);
+
     let updatedUser = updateUserProfile(userId, {
       ...body,
       Email: body.Email || userEmail,

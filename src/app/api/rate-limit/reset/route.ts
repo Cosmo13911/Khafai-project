@@ -1,10 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resetUserRateLimit } from "@/lib/rate-limiter";
 import { resetUserDatabase } from "@/lib/database";
+import { verifyServerAuth, verifyCsrfOrigin } from "@/lib/auth-server";
 
 export async function POST(req: NextRequest) {
-  const userEmail = req.headers.get("x-user-email") || "";
-  const userId = req.headers.get("x-user-id") || userEmail || "";
+  if (!verifyCsrfOrigin(req)) {
+    return NextResponse.json(
+      { success: false, error: "CSRF_FORBIDDEN", message: "Invalid request origin" },
+      { status: 403 }
+    );
+  }
+
+  const authUser = await verifyServerAuth(req);
+  if (!authUser) {
+    return NextResponse.json(
+      { success: false, error: "UNAUTHORIZED", message: "กรุณาเข้าสู่ระบบก่อนดำเนินการ" },
+      { status: 401 }
+    );
+  }
+
+  const { userId } = authUser;
   
   try {
     const body = await req.json().catch(() => ({}));

@@ -14,6 +14,8 @@ import {
   checkDeleteProtection,
 } from "@/lib/khafai-engine";
 import { callGasApi } from "@/lib/gas-client";
+import { verifyServerAuth, verifyCsrfOrigin } from "@/lib/auth-server";
+import { invalidateServerCache, setServerCache } from "@/lib/server-cache";
 import { MeterLog } from "@/types";
 
 interface GasResponse {
@@ -27,9 +29,25 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // 1. CSRF Protection
+  if (!verifyCsrfOrigin(req)) {
+    return NextResponse.json(
+      { success: false, error: "CSRF_FORBIDDEN", message: "Invalid request origin" },
+      { status: 403 }
+    );
+  }
+
+  // 2. Server-side Authentication & Token Verification
+  const authUser = await verifyServerAuth(req);
+  if (!authUser) {
+    return NextResponse.json(
+      { success: false, error: "UNAUTHORIZED", message: "กรุณาเข้าสู่ระบบก่อนดำเนินการ" },
+      { status: 401 }
+    );
+  }
+
   const { id: logId } = await params;
-  const userEmail = req.headers.get("x-user-email") || "";
-  const userId = req.headers.get("x-user-id") || userEmail || "";
+  const { userId, email: userEmail, name: userName, picture: userPicture } = authUser;
   const rateLimit = checkRateLimit(userId, "write");
 
   if (rateLimit.isLocked) {
@@ -71,10 +89,13 @@ export async function PUT(
       }
     }
 
+    // Invalidate server cache
+    invalidateServerCache(`user_data_${userId}`);
+
     // Fast local optimistic update
     let updated = updateMeterLog(userId, logId, body);
     let updatedLogs = getMeterLogs(userId);
-    let updatedUser = getUserProfile(userId);
+    let updatedUser = getUserProfile(userId, userEmail, userName, userPicture);
     let isGasConnected = false;
 
     // Synchronous call to GAS Web App
@@ -85,6 +106,12 @@ export async function PUT(
         Record_Date: body.Record_Date,
         Meter_Reading: body.Meter_Reading,
         Is_New_Meter: body.Is_New_Meter,
+        Email: userEmail,
+        email: userEmail,
+        Name: userName,
+        name: userName,
+        Picture: userPicture,
+        picture: userPicture,
       });
 
       if (gasRes?.success && Array.isArray(gasRes.logs)) {
@@ -100,7 +127,7 @@ export async function PUT(
     const summary = calculateSummaryData(updatedLogs, updatedUser.Current_Rate_Per_Unit);
     const monthlyChart = calculateMonthlyChartData(updatedLogs);
 
-    return NextResponse.json({
+    const responsePayload = {
       success: true,
       user: updatedUser,
       log: updated,
@@ -109,7 +136,11 @@ export async function PUT(
       monthlyChart,
       rateLimit,
       isGasConnected,
-    });
+    };
+
+    setServerCache(`user_data_${userId}`, responsePayload, 60);
+
+    return NextResponse.json(responsePayload);
   } catch (error: unknown) {
     const errMessage = error instanceof Error ? error.message : "Failed to update log";
     return NextResponse.json(
@@ -123,9 +154,25 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // 1. CSRF Protection
+  if (!verifyCsrfOrigin(req)) {
+    return NextResponse.json(
+      { success: false, error: "CSRF_FORBIDDEN", message: "Invalid request origin" },
+      { status: 403 }
+    );
+  }
+
+  // 2. Server-side Authentication & Token Verification
+  const authUser = await verifyServerAuth(req);
+  if (!authUser) {
+    return NextResponse.json(
+      { success: false, error: "UNAUTHORIZED", message: "กรุณาเข้าสู่ระบบก่อนดำเนินการ" },
+      { status: 401 }
+    );
+  }
+
   const { id: logId } = await params;
-  const userEmail = req.headers.get("x-user-email") || "";
-  const userId = req.headers.get("x-user-id") || userEmail || "";
+  const { userId, email: userEmail, name: userName, picture: userPicture } = authUser;
   const rateLimit = checkRateLimit(userId, "write");
 
   if (rateLimit.isLocked) {
@@ -143,24 +190,27 @@ export async function DELETE(
   try {
     const existingLogs = getMeterLogs(userId);
 
-    // Delete Protection Rule Check
+    // Business Logic: Prevent deleting if it would invalidate subsequent cycle calculations
     const deleteCheck = checkDeleteProtection(existingLogs, logId);
     if (!deleteCheck.canDelete) {
       return NextResponse.json(
         {
           success: false,
-          error: "DELETE_PROTECTION_TRIGGERED",
-          message: deleteCheck.message,
+          error: "DELETE_PROTECTED",
+          message: deleteCheck.message || "ไม่สามารถลบข้อมูลนี้ได้เนื่องจากจะกระทบกับการคำนวณในรอบถัดไป",
           rateLimit,
         },
         { status: 400 }
       );
     }
 
-    // Fast local optimistic delete
+    // Invalidate server cache
+    invalidateServerCache(`user_data_${userId}`);
+
+    // Fast local optimistic deletion
     deleteMeterLog(userId, logId);
     let updatedLogs = getMeterLogs(userId);
-    let updatedUser = getUserProfile(userId);
+    let updatedUser = getUserProfile(userId, userEmail, userName, userPicture);
     let isGasConnected = false;
 
     // Synchronous call to GAS Web App
@@ -168,6 +218,12 @@ export async function DELETE(
       const gasRes = await callGasApi<GasResponse>("deleteMeterLog", userId, {
         log_id: logId,
         Log_ID: logId,
+        Email: userEmail,
+        email: userEmail,
+        Name: userName,
+        name: userName,
+        Picture: userPicture,
+        picture: userPicture,
       });
 
       if (gasRes?.success && Array.isArray(gasRes.logs)) {
@@ -181,7 +237,7 @@ export async function DELETE(
     const summary = calculateSummaryData(updatedLogs, updatedUser.Current_Rate_Per_Unit);
     const monthlyChart = calculateMonthlyChartData(updatedLogs);
 
-    return NextResponse.json({
+    const responsePayload = {
       success: true,
       user: updatedUser,
       logs: updatedLogs,
@@ -189,7 +245,11 @@ export async function DELETE(
       monthlyChart,
       rateLimit,
       isGasConnected,
-    });
+    };
+
+    setServerCache(`user_data_${userId}`, responsePayload, 60);
+
+    return NextResponse.json(responsePayload);
   } catch (error: unknown) {
     const errMessage = error instanceof Error ? error.message : "Failed to delete log";
     return NextResponse.json(

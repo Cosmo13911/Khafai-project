@@ -12,6 +12,7 @@
 const SHEET_USERS = "Users";
 const SHEET_METER_LOGS = "Meter_Logs";
 const DEFAULT_RATE = 8.00;
+const KHAFAI_SECRET_KEY = PropertiesService.getScriptProperties().getProperty("KHAFAI_API_SECRET") || "khafai_secure_token_prod_2026";
 
 function doGet(e) { return handleRequest(e, "GET"); }
 function doPost(e) { return handleRequest(e, "POST"); }
@@ -31,6 +32,12 @@ function handleRequest(e, httpMethod) {
       params = JSON.parse(e.postData.contents);
     } else if (e.parameter) {
       params = e.parameter;
+    }
+
+    // 1. API Secret Verification for Server-to-Server Security
+    const incomingKey = params.apiKey || params.api_secret || params.key || (e.parameter ? (e.parameter.apiKey || e.parameter.key || e.parameter.api_secret) : "");
+    if (KHAFAI_SECRET_KEY && incomingKey !== KHAFAI_SECRET_KEY) {
+      return createJsonResponse({ success: false, error: "UNAUTHORIZED_API_ACCESS", message: "ไม่อนุญาตให้เข้าถึง: API Secret ไม่ถูกต้อง" }, 401);
     }
 
     const action = params.action;

@@ -5,9 +5,13 @@ export function getGasUrl(): string {
   return process.env.GAS_WEB_APP_URL || DEFAULT_GAS_URL;
 }
 
+export function getGasSecret(): string {
+  return process.env.KHAFAI_API_SECRET || "khafai_secure_token_prod_2026";
+}
+
 /**
  * Sends a request to Google Apps Script Web App API via Next.js Proxy.
- * Includes a strict 3.5-second timeout and query parameter fallback
+ * Includes a strict 15-second timeout and query parameter fallback
  * to prevent hanging or spinning indefinitely.
  */
 export async function callGasApi<T = Record<string, unknown>>(
@@ -16,18 +20,23 @@ export async function callGasApi<T = Record<string, unknown>>(
   extraParams: Record<string, unknown> = {}
 ): Promise<T | null> {
   const baseUrl = getGasUrl();
+  const apiSecret = getGasSecret();
 
   const payload: Record<string, unknown> = {
     action,
     user_id: userId,
     User_ID: userId,
+    apiKey: apiSecret,
+    api_secret: apiSecret,
     ...extraParams,
   };
 
-  // Set action, user_id, and email into searchParams for clean URL routing
+  // Set action, user_id, email, and apiKey into searchParams for clean URL routing
   const urlObj = new URL(baseUrl);
   urlObj.searchParams.set("action", action);
   urlObj.searchParams.set("user_id", userId);
+  urlObj.searchParams.set("apiKey", apiSecret);
+  urlObj.searchParams.set("api_secret", apiSecret);
   const emailVal = (extraParams.Email || extraParams.email || extraParams.user_email) as string;
   if (emailVal) {
     urlObj.searchParams.set("email", emailVal);
