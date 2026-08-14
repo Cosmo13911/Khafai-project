@@ -15,7 +15,7 @@ import { DeleteProtectionModal } from "@/components/DeleteProtectionModal";
 import { GoogleLoginModal } from "@/components/GoogleLoginModal";
 import { TestApiModal } from "@/components/TestApiModal";
 import { RateLimitLockedState } from "@/components/RateLimitLockedState";
-import { ElectricityLoading } from "@/components/ElectricityLoading";
+import { DashboardSkeleton, FullPageSkeleton } from "@/components/DashboardSkeleton";
 import { ToastNotification, ToastMessage } from "@/components/ToastNotification";
 import {
   recalculateLogs,
@@ -23,52 +23,7 @@ import {
   calculateMonthlyChartData,
   checkDeleteProtection,
 } from "@/lib/khafai-engine";
-import { sanitizeEmail } from "@/lib/database";
-
-interface LocalCachePayload {
-  user: UserProfile;
-  logs: MeterLog[];
-  updatedAt: number;
-}
-
-export function getLocalCache(userId: string): LocalCachePayload | null {
-  if (typeof window === "undefined") return null;
-  const cleanId = sanitizeEmail(userId);
-  try {
-    const raw = localStorage.getItem(`khafai_cache_${cleanId}`);
-    if (raw) {
-      const parsed: LocalCachePayload = JSON.parse(raw);
-      if (parsed.user) {
-        parsed.user.Email = sanitizeEmail(parsed.user.Email, cleanId);
-        parsed.user.User_ID = sanitizeEmail(parsed.user.User_ID, cleanId);
-      }
-      return parsed;
-    }
-  } catch {
-    // Ignore error
-  }
-  return null;
-}
-
-export function saveLocalCache(userId: string, user: UserProfile, logs: MeterLog[]): void {
-  if (typeof window === "undefined") return;
-  const cleanId = sanitizeEmail(userId);
-  try {
-    const cleanUser = {
-      ...user,
-      User_ID: sanitizeEmail(user.User_ID, cleanId),
-      Email: sanitizeEmail(user.Email, cleanId),
-    };
-    const payload: LocalCachePayload = {
-      user: cleanUser,
-      logs,
-      updatedAt: Date.now(),
-    };
-    localStorage.setItem(`khafai_cache_${cleanId}`, JSON.stringify(payload));
-  } catch {
-    // Ignore error
-  }
-}
+import { getLocalCache, saveLocalCache } from "@/lib/client-cache";
 
 export default function KhafaiDashboard() {
   const router = useRouter();
@@ -563,15 +518,11 @@ export default function KhafaiDashboard() {
   };
 
   if (!isMounted) {
-    return (
-      <ElectricityLoading fullScreen title="กำลังดึงข้อมูล" />
-    );
+    return <FullPageSkeleton />;
   }
 
   if (isAuthLoading || !isAuthenticated) {
-    return (
-      <ElectricityLoading fullScreen dark title="กำลังดึงข้อมูล" />
-    );
+    return <FullPageSkeleton />;
   }
 
   return (
@@ -590,14 +541,17 @@ export default function KhafaiDashboard() {
       {rateLimit && rateLimit.isLocked && (
         <RateLimitLockedState
           remainingSeconds={rateLimit.remainingSeconds}
-          onResetLock={handleResetLock}
+          onTimerComplete={async () => {
+            setRateLimit((prev) => (prev ? { ...prev, isLocked: false, remainingSeconds: 0 } : null));
+            await fetchData(currentUserId, true);
+          }}
         />
       )}
 
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {isFetchingInitialData ? (
-          <ElectricityLoading />
+          <DashboardSkeleton />
         ) : (
           <>
             {/* Executive Summary Cards with Smooth Number Counter Animation */}

@@ -2,6 +2,7 @@
 
 import React from "react";
 import { BobbingDots } from "@/components/loading-ui/bobbing-dots";
+import { DashboardSkeleton } from "./DashboardSkeleton";
 
 interface ElectricityLoadingProps {
   title?: string;
@@ -28,14 +29,16 @@ export const ElectricityLoading: React.FC<ElectricityLoadingProps> = ({
     );
   }
 
-  const containerClasses = fullScreen
-    ? `fixed inset-0 z-50 flex flex-col items-center justify-center space-y-5 select-none p-4 ${
-        dark ? "bg-slate-950 text-white" : "bg-slate-50/95 backdrop-blur-xs text-slate-900"
-      }`
-    : "py-16 sm:py-20 flex flex-col items-center justify-center space-y-5 select-none animate-in fade-in duration-300";
+  if (!fullScreen) {
+    return <DashboardSkeleton />;
+  }
 
   return (
-    <div className={containerClasses}>
+    <div
+      className={`fixed inset-0 z-50 flex flex-col items-center justify-center space-y-5 select-none p-4 ${
+        dark ? "bg-slate-950 text-white" : "bg-slate-50/95 backdrop-blur-xs text-slate-900"
+      }`}
+    >
       {/* Playful Bobbing Dots Animation Container */}
       <div className="flex flex-col items-center justify-center space-y-5">
         <BobbingDots
