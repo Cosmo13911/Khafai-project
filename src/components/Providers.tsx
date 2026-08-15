@@ -3,6 +3,8 @@
 import React from "react";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { GoogleAuthProvider, useGoogleAuth } from "@/context/GoogleAuthContext";
+import { PwaProvider } from "@/context/PwaContext";
+import { PwaManager } from "@/components/PwaManager";
 
 function GoogleOAuthProviderWrapper({ children }: { children: React.ReactNode }) {
   const { customClientId } = useGoogleAuth();
@@ -22,7 +24,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <GoogleAuthProvider>
       <GoogleOAuthProviderWrapper>
-        {children}
+        <PwaProvider>
+          {children}
+          <PwaManager />
+        </PwaProvider>
       </GoogleOAuthProviderWrapper>
     </GoogleAuthProvider>
   );

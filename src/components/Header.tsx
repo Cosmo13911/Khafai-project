@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Settings, LogOut, ChevronDown } from "lucide-react";
+import { Settings, LogOut, ChevronDown, Download, Smartphone, CheckCircle2 } from "lucide-react";
 import { UserProfile } from "@/types";
 import { useGoogleAuth } from "@/context/GoogleAuthContext";
+import { usePwa } from "@/context/PwaContext";
 import { KhafaiLogo } from "./KhafaiLogo";
 
 interface HeaderProps {
@@ -26,6 +27,7 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const router = useRouter();
   const { session, logout } = useGoogleAuth();
+  const { isInstalled, isInstallable, installApp } = usePwa();
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
   const [isDropdownClosing, setIsDropdownClosing] = useState<boolean>(false);
   const [isMounted, setIsMounted] = useState<boolean>(false);
@@ -181,6 +183,29 @@ export const Header: React.FC<HeaderProps> = ({
                       <Settings className="w-4 h-4 text-slate-500 flex-shrink-0" />
                       <span>ตั้งค่าอัตราค่าไฟ</span>
                     </button>
+
+                    {/* PWA Install / App status */}
+                    {!isInstalled ? (
+                      <button
+                        onClick={() => {
+                          closeDropdown(() => {
+                            installApp();
+                          });
+                        }}
+                        className="w-full flex items-center justify-between px-4 py-2 text-xs text-sky-700 hover:bg-sky-50 font-medium transition-colors cursor-pointer text-left"
+                      >
+                        <div className="flex items-center space-x-2.5">
+                          <Smartphone className="w-4 h-4 text-sky-600 flex-shrink-0" />
+                          <span>ติดตั้งแอปบนอุปกรณ์</span>
+                        </div>
+                        <Download className="w-3.5 h-3.5 text-sky-500" />
+                      </button>
+                    ) : (
+                      <div className="w-full flex items-center space-x-2.5 px-4 py-2 text-xs text-emerald-700 bg-emerald-50/50 font-medium">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                        <span>ติดตั้งเป็นแอปแล้ว</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Section 3: Account Actions (Opening 40ms / Closing 0ms) */}

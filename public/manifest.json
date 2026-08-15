@@ -1,0 +1,52 @@
+{
+  "name": "Khafai - ระบบบันทึกและวิเคราะห์การใช้ไฟฟ้า",
+  "short_name": "Khafai",
+  "description": "Web Application สำหรับบันทึกและวิเคราะห์การใช้ไฟฟ้าแบบ Multi-user พร้อมระบบคำนวณหน่วยไฟฟ้าและค่าใช้จ่ายอัตโนมัติ",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f8fafc",
+  "theme_color": "#0284c7",
+  "categories": ["utilities", "productivity", "finance"],
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/icon-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "บันทึกค่าไฟใหม่",
+      "short_name": "บันทึกใหม่",
+      "description": "เปิดหน้าบันทึกค่าไฟฟ้าประจำงวด",
+      "url": "/?action=new_entry",
+      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+    }
+  ]
+}
