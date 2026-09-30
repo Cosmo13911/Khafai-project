@@ -89,8 +89,10 @@ export async function GET(req: NextRequest) {
     isGasConnected,
   };
 
-  // Cache in server memory for 60 seconds
-  setServerCache(cacheKey, responsePayload, 60);
+  // Only cache in server memory if GAS connected successfully
+  if (isGasConnected) {
+    setServerCache(cacheKey, responsePayload, 60);
+  }
 
   return NextResponse.json(responsePayload);
 }

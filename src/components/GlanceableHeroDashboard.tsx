@@ -67,14 +67,56 @@ export const GlanceableHeroDashboard: React.FC<GlanceableHeroDashboardProps> = (
   const currentCost = isFreshCycle ? 0 : (summary?.currentMonthCost ?? 1248.0);
   const currentUnits = isFreshCycle ? 0 : (summary?.currentMonthUnits ?? 248.5);
 
+  // Smooth Animated Counter Effect (0 -> target value)
+  const [displayCost, setDisplayCost] = useState<number>(0);
+  const [displayUnits, setDisplayUnits] = useState<number>(0);
+
+  useEffect(() => {
+    let startTimestamp: number | null = null;
+    const duration = 1600; // 1.6s for distinct fast surge then slow deceleration
+    const startCost = 0;
+    const targetCost = currentCost;
+    const startUnits = 0;
+    const targetUnits = currentUnits;
+
+    let animationFrameId: number;
+
+    // Cubic-Bezier style deceleration: shoots up rapidly at start, then coasts gently to a stop
+    const easeOutQuart = (x: number): number => {
+      return 1 - Math.pow(1 - x, 4);
+    };
+
+    const step = (timestamp: number) => {
+      if (!startTimestamp) startTimestamp = timestamp;
+      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+      const easedProgress = easeOutQuart(progress);
+
+      setDisplayCost(startCost + (targetCost - startCost) * easedProgress);
+      setDisplayUnits(startUnits + (targetUnits - startUnits) * easedProgress);
+
+      if (progress < 1) {
+        animationFrameId = requestAnimationFrame(step);
+      } else {
+        setDisplayCost(targetCost);
+        setDisplayUnits(targetUnits);
+      }
+    };
+
+    animationFrameId = requestAnimationFrame(step);
+
+    return () => {
+      if (animationFrameId) cancelAnimationFrame(animationFrameId);
+    };
+  }, [currentCost, currentUnits]);
+
   // Split integer and decimal for dominant typography display
-  const costFormatted = currentCost.toFixed(2);
+  const costFormatted = displayCost.toFixed(2);
   const [costInteger, costDecimal] = costFormatted.split(".");
 
   // Daily average calculation
   const now = new Date();
   const daysPassed = Math.max(1, now.getDate());
-  const dailyAverageUnits = isFreshCycle ? "0.0" : (currentUnits / daysPassed).toFixed(1);
+  const dailyAverageUnits = isFreshCycle ? "0.0" : (displayUnits / daysPassed).toFixed(1);
 
   // Difference from previous reading
   const diffUnitsText = useMemo(() => {
@@ -289,7 +331,7 @@ export const GlanceableHeroDashboard: React.FC<GlanceableHeroDashboardProps> = (
         {/* Secondary Metric & Daily Average Breathing Line */}
         <div className="mt-5 sm:mt-6 flex items-center justify-center space-x-2.5 text-slate-500 font-light text-sm sm:text-base md:text-lg tracking-wide tabular-nums">
           <span className="font-normal text-slate-700" id="display-kwh">
-            {currentUnits.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kWh
+            {displayUnits.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kWh
           </span>
           <span className="text-slate-300 text-xs sm:text-sm">•</span>
           <span className="text-slate-500">{dailyAverageUnits} หน่วย/วัน</span>

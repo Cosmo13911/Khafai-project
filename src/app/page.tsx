@@ -28,7 +28,7 @@ import { DeleteProtectionModal } from "@/components/DeleteProtectionModal";
 import { GoogleLoginModal } from "@/components/GoogleLoginModal";
 import { TestApiModal } from "@/components/TestApiModal";
 import { RateLimitLockedState } from "@/components/RateLimitLockedState";
-import { DashboardSkeleton, FullPageSkeleton } from "@/components/DashboardSkeleton";
+import { DashboardSkeleton, FullPageSkeleton, HomeHeroSkeleton } from "@/components/DashboardSkeleton";
 import { ToastNotification, ToastMessage } from "@/components/ToastNotification";
 import {
   recalculateLogs,
@@ -115,6 +115,7 @@ export default function KhafaiDashboard() {
 
   // Read LocalStorage cache or reset state when switching user (0ms Instant Load)
   useEffect(() => {
+    if (isAuthLoading) return;
     if (!currentUserId) return;
     const cached = getLocalCache(currentUserId);
     if (cached) {
@@ -132,7 +133,7 @@ export default function KhafaiDashboard() {
       setLogs([]);
       setIsFetchingInitialData(true);
     }
-  }, [currentUserId, currentEmail]);
+  }, [isAuthLoading, currentUserId, currentEmail]);
 
   // Dynamically Filtered Logs based on active timeFilter
   const filteredLogs = useMemo(() => {
@@ -290,11 +291,20 @@ export default function KhafaiDashboard() {
             Created_At: new Date().toISOString(),
             hasCompletedOnboarding: true,
           };
-          const updatedLogs = data.logs || [];
+          
+          // Safety Guard: If GAS was not connected, do NOT overwrite non-empty local logs with empty array!
+          const incomingLogs = data.logs || [];
+          const currentLocalCache = getLocalCache(userId);
+          const hasExistingLocalLogs = currentLocalCache && currentLocalCache.logs && currentLocalCache.logs.length > 0;
+
+          let finalLogs = incomingLogs;
+          if (!data.isGasConnected && incomingLogs.length === 0 && hasExistingLocalLogs) {
+            finalLogs = currentLocalCache.logs;
+          }
 
           setUser(updatedUser);
-          setLogs(updatedLogs);
-          saveLocalCache(userId, updatedUser, updatedLogs);
+          setLogs(finalLogs);
+          saveLocalCache(userId, updatedUser, finalLogs);
 
           // Onboarding modal is disabled as requested by user
           // User records meter directly from Quick Record or Header buttons
@@ -303,6 +313,11 @@ export default function KhafaiDashboard() {
         }
       } catch {
         // Fallback to local cache if network error
+        const local = getLocalCache(userId);
+        if (local) {
+          setUser(local.user);
+          setLogs(local.logs);
+        }
       } finally {
         setIsLoading(false);
         setIsFetchingInitialData(false);
@@ -312,10 +327,11 @@ export default function KhafaiDashboard() {
   );
 
   useEffect(() => {
-    if (currentUserId) {
+    // Only fetch data once Auth state has finished loading from localStorage/session
+    if (!isAuthLoading && currentUserId) {
       fetchData(currentUserId, false, currentEmail, currentName, currentPicture);
     }
-  }, [currentUserId, currentEmail, currentName, currentPicture, fetchData]);
+  }, [isAuthLoading, currentUserId, currentEmail, currentName, currentPicture, fetchData]);
 
   const handleCompleteOnboarding = async (baselineReading: number, startDate: string) => {
     setIsOnboardingOpen(false);
@@ -571,9 +587,13 @@ export default function KhafaiDashboard() {
       {/* Main Container */}
       <main className="flex-1 w-full mx-auto">
         {isFetchingInitialData ? (
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <DashboardSkeleton />
-          </div>
+          activeView === "home" ? (
+            <HomeHeroSkeleton />
+          ) : (
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+              <DashboardSkeleton />
+            </div>
+          )
         ) : (
           <AnimatePresence mode="wait">
             {activeView === "home" ? (
