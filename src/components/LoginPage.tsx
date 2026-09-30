@@ -54,17 +54,8 @@ export default function LoginPage() {
   return (
     <div className="h-screen h-[100dvh] w-full bg-white flex flex-col md:flex-row font-sans antialiased text-[#111827] select-none relative overflow-hidden fixed inset-0">
       
-      {/* Scope 3D Room Scene CSS Styles & Prevent All Page Scrolling */}
+      {/* Scope 3D Room Scene CSS Styles */}
       <style jsx global>{`
-        html, body {
-          overflow: hidden !important;
-          overscroll-behavior: none !important;
-          height: 100% !important;
-          width: 100% !important;
-          position: fixed !important;
-          inset: 0 !important;
-        }
-
         :root {
           --night-1: #06070f;
           --night-2: #0d1022;

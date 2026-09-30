@@ -65,10 +65,10 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload }) => {
           {/* Total Cost */}
           <div className="flex items-center justify-between">
             <span className="flex items-center text-slate-300 text-[11px] sm:text-xs">
-              <span className="w-2 h-2 rounded-full bg-blue-500 mr-1.5 inline-block shrink-0 shadow-xs" />
+              <span className="w-2 h-2 rounded-full bg-[#5DADE2] mr-1.5 inline-block shrink-0 shadow-xs" />
               ยอดค่าไฟ:
             </span>
-            <span className="font-bold text-blue-400 font-mono text-xs">
+            <span className="font-bold text-[#5DADE2] font-mono text-xs">
               ฿{item.totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
@@ -76,10 +76,10 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload }) => {
           {/* Total Units */}
           <div className="flex items-center justify-between">
             <span className="flex items-center text-slate-300 text-[11px] sm:text-xs">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 mr-1.5 inline-block shrink-0 shadow-xs" />
+              <span className="w-2 h-2 rounded-full bg-[#2ECC71] mr-1.5 inline-block shrink-0 shadow-xs" />
               หน่วยที่ใช้:
             </span>
-            <span className="font-bold text-emerald-400 font-mono text-xs">
+            <span className="font-bold text-[#2ECC71] font-mono text-xs">
               {item.totalUnits.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kWh
             </span>
           </div>
@@ -101,7 +101,7 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload }) => {
                   item.costChangePct > 0
                     ? "text-rose-400"
                     : item.costChangePct < 0
-                    ? "text-emerald-400"
+                    ? "text-[#2ECC71]"
                     : "text-slate-400"
                 }`}
               >
@@ -185,20 +185,22 @@ export const MonthlyTrendChart: React.FC<MonthlyTrendChartProps> = memo(({ data 
   }, [data]);
 
   return (
-    <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs flex flex-col h-full justify-between transition-all duration-300">
+    <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-100 shadow-sm/60 flex flex-col h-full justify-between transition-all duration-300">
       {/* Top Header & Interactive Segmented Controls */}
       <div>
         <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 sm:pb-3 border-b border-slate-100">
           {/* Title & Icon */}
-          <div className="flex items-center space-x-2 min-w-0">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
-              <BarChart3 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+          <div className="flex items-center space-x-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center text-[#2ECC71] shrink-0">
+              <BarChart3 className="w-4 h-4" />
             </div>
             <div className="min-w-0">
-              <h2 className="text-sm sm:text-base font-bold text-slate-900 truncate">วิเคราะห์แนวโน้มค่าไฟฟ้า</h2>
-              <p className="text-[11px] sm:text-xs text-slate-500 truncate">
+              <h2 className="text-sm sm:text-base font-semibold text-slate-900 tracking-tight truncate">
+                พฤติกรรมการใช้ไฟฟ้า (Usage Behavior)
+              </h2>
+              <p className="text-[11px] sm:text-xs text-slate-400 truncate">
                 {metricView === "dual"
-                  ? "เปรียบเทียบสัดส่วนยอดเงิน (บาท) และหน่วยที่ใช้ (kWh)"
+                  ? "เปรียบเทียบสัดส่วนยอดเงิน (ฟ้า) และหน่วยที่ใช้ (เขียว)"
                   : metricView === "cost"
                   ? "สถิติยอดชำระค่าไฟฟ้า (บาท)"
                   : "สถิติปริมาณการใช้ไฟฟ้า (kWh)"}
@@ -206,14 +208,14 @@ export const MonthlyTrendChart: React.FC<MonthlyTrendChartProps> = memo(({ data 
             </div>
           </div>
 
-          {/* Interactive Metric Switcher Tabs (Compact Mobile Padding) */}
-          <div className="flex items-center gap-1 p-0.5 sm:p-1 bg-slate-100/90 rounded-xl border border-slate-200/70 shrink-0 ml-auto">
+          {/* Interactive Metric Switcher Tabs */}
+          <div className="flex items-center gap-0.5 p-0.5 sm:p-1 bg-slate-100/80 rounded-xl border border-slate-200/50 shrink-0 ml-auto">
             <button
               onClick={() => setMetricView("dual")}
-              className={`flex items-center space-x-1 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
+              className={`flex items-center space-x-1 px-2 py-1 sm:px-2.5 sm:py-1 rounded-lg text-[11px] sm:text-xs font-medium transition-all cursor-pointer ${
                 metricView === "dual"
-                  ? "bg-white text-blue-600 shadow-xs border border-slate-200/50"
-                  : "text-slate-600 hover:text-slate-900"
+                  ? "bg-white text-slate-900 font-semibold shadow-xs border border-slate-200/40"
+                  : "text-slate-500 hover:text-slate-800"
               }`}
               title="เปรียบเทียบ 2 แกน (ยอดเงิน และ หน่วยไฟ)"
             >
@@ -224,10 +226,10 @@ export const MonthlyTrendChart: React.FC<MonthlyTrendChartProps> = memo(({ data 
 
             <button
               onClick={() => setMetricView("cost")}
-              className={`flex items-center space-x-1 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
+              className={`flex items-center space-x-1 px-2 py-1 sm:px-2.5 sm:py-1 rounded-lg text-[11px] sm:text-xs font-medium transition-all cursor-pointer ${
                 metricView === "cost"
-                  ? "bg-white text-blue-600 shadow-xs border border-slate-200/50"
-                  : "text-slate-600 hover:text-slate-900"
+                  ? "bg-white text-slate-900 font-semibold shadow-xs border border-slate-200/40"
+                  : "text-slate-500 hover:text-slate-800"
               }`}
               title="ดูเฉพาะยอดเงิน (บาท)"
             >
@@ -237,10 +239,10 @@ export const MonthlyTrendChart: React.FC<MonthlyTrendChartProps> = memo(({ data 
 
             <button
               onClick={() => setMetricView("units")}
-              className={`flex items-center space-x-1 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
+              className={`flex items-center space-x-1 px-2 py-1 sm:px-2.5 sm:py-1 rounded-lg text-[11px] sm:text-xs font-medium transition-all cursor-pointer ${
                 metricView === "units"
-                  ? "bg-white text-emerald-600 shadow-xs border border-slate-200/50"
-                  : "text-slate-600 hover:text-slate-900"
+                  ? "bg-white text-slate-900 font-semibold shadow-xs border border-slate-200/40"
+                  : "text-slate-500 hover:text-slate-800"
               }`}
               title="ดูเฉพาะหน่วยไฟ (kWh)"
             >
@@ -250,42 +252,42 @@ export const MonthlyTrendChart: React.FC<MonthlyTrendChartProps> = memo(({ data 
           </div>
         </div>
 
-        {/* Mini Summary Stats Bar (Refined for Mobile: Short Labels & No Word Breaking) */}
-        <div className="grid grid-cols-3 gap-1.5 sm:gap-2 my-2.5 sm:my-3 p-2 sm:p-2.5 bg-slate-50/90 rounded-xl border border-slate-200/60 text-xs">
+        {/* Mini Summary Stats Bar */}
+        <div className="grid grid-cols-3 gap-1.5 sm:gap-2 my-2.5 sm:my-3 p-2 sm:p-2.5 bg-slate-50/70 rounded-xl border border-slate-100 text-xs">
           {/* Stat 1: Avg Units */}
           <div className="flex flex-col min-w-0">
-            <span className="text-[10px] sm:text-[11px] font-semibold text-slate-400 flex items-center whitespace-nowrap">
-              <Zap className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5 text-emerald-500 shrink-0" />
+            <span className="text-[10px] sm:text-[11px] font-medium text-slate-400 flex items-center whitespace-nowrap">
+              <Zap className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-1 text-[#2ECC71] shrink-0" />
               ใช้เฉลี่ย
             </span>
-            <span className="font-extrabold text-slate-800 font-mono text-xs sm:text-sm mt-0.5 truncate">
-              {stats.avgUnits.toLocaleString()} <span className="text-[10px] font-normal text-slate-500">kWh</span>
+            <span className="font-bold text-slate-900 font-mono text-xs sm:text-sm mt-0.5 truncate">
+              {stats.avgUnits.toLocaleString()} <span className="text-[10px] font-normal text-slate-400">kWh</span>
             </span>
           </div>
 
           {/* Stat 2: Avg Cost */}
-          <div className="flex flex-col min-w-0 border-x border-slate-200/70 px-1.5 sm:px-2.5">
-            <span className="text-[10px] sm:text-[11px] font-semibold text-slate-400 flex items-center whitespace-nowrap">
-              <Banknote className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5 text-blue-500 shrink-0" />
+          <div className="flex flex-col min-w-0 border-x border-slate-200/60 px-1.5 sm:px-2.5">
+            <span className="text-[10px] sm:text-[11px] font-medium text-slate-400 flex items-center whitespace-nowrap">
+              <Banknote className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-1 text-[#5DADE2] shrink-0" />
               จ่ายเฉลี่ย
             </span>
-            <span className="font-extrabold text-slate-800 font-mono text-xs sm:text-sm mt-0.5 truncate">
+            <span className="font-bold text-slate-900 font-mono text-xs sm:text-sm mt-0.5 truncate">
               ฿{stats.avgCost.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
             </span>
           </div>
 
           {/* Stat 3: Peak Month */}
           <div className="flex flex-col min-w-0 pl-1">
-            <span className="text-[10px] sm:text-[11px] font-semibold text-slate-400 flex items-center whitespace-nowrap">
-              <TrendingUp className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5 text-purple-500 shrink-0" />
+            <span className="text-[10px] sm:text-[11px] font-medium text-slate-400 flex items-center whitespace-nowrap">
+              <TrendingUp className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-1 text-emerald-500 shrink-0" />
               ยอดสูงสุด
             </span>
             <div className="mt-0.5 flex flex-col min-w-0">
-              <span className="font-extrabold text-purple-700 font-mono text-xs sm:text-sm truncate leading-tight">
+              <span className="font-bold text-slate-900 font-mono text-xs sm:text-sm truncate leading-tight">
                 ฿{stats.maxCost.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
               </span>
               {stats.maxMonth !== "-" && (
-                <span className="text-[9px] sm:text-[10px] font-medium text-slate-400 truncate leading-none mt-0.5">
+                <span className="text-[9px] sm:text-[10px] font-normal text-slate-400 truncate leading-none mt-0.5">
                   {stats.maxMonth}
                 </span>
               )}
@@ -294,7 +296,7 @@ export const MonthlyTrendChart: React.FC<MonthlyTrendChartProps> = memo(({ data 
         </div>
       </div>
 
-      {/* Chart Canvas Area (Compact Height on Mobile: h-48 sm:h-64 lg:h-72) */}
+      {/* Chart Canvas Area */}
       {data.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center py-12 text-slate-400 text-sm">
           <span>ยังไม่มีข้อมูลสถิติรายเดือน</span>
@@ -303,16 +305,16 @@ export const MonthlyTrendChart: React.FC<MonthlyTrendChartProps> = memo(({ data 
         <div className="w-full h-48 sm:h-64 lg:h-72 mt-1 sm:mt-2 animate-in fade-in duration-300 ease-out">
           <ResponsiveContainer width="100%" height="100%">
             {metricView === "dual" ? (
-              /* ================= 1. DUAL-AXIS COMPOSED CHART (Cost Bar + Units Area/Line) ================= */
+              /* DUAL-AXIS COMPOSED CHART (#5DADE2 ฟ้า + #2ECC71 เขียว) */
               <ComposedChart data={enrichedData} margin={{ top: 8, right: 4, left: -14, bottom: 0 }}>
                 <defs>
-                  <linearGradient id="gradientUnits" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10B981" stopOpacity={0.25} />
-                    <stop offset="95%" stopColor="#10B981" stopOpacity={0.0} />
+                  <linearGradient id="gradientUnitsGreen" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#2ECC71" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#2ECC71" stopOpacity={0.0} />
                   </linearGradient>
-                  <linearGradient id="gradientCostBar" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#3B82F6" stopOpacity={1} />
-                    <stop offset="100%" stopColor="#2563EB" stopOpacity={0.85} />
+                  <linearGradient id="gradientCostBarSky" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#5DADE2" stopOpacity={1} />
+                    <stop offset="100%" stopColor="#3498DB" stopOpacity={0.85} />
                   </linearGradient>
                 </defs>
 
@@ -331,7 +333,7 @@ export const MonthlyTrendChart: React.FC<MonthlyTrendChartProps> = memo(({ data 
                   width={46}
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fill: "#94a3b8", fontSize: 9.5, fontWeight: 600 }}
+                  tick={{ fill: "#5DADE2", fontSize: 9.5, fontWeight: 600 }}
                   tickFormatter={(val) => `฿${Number(val).toLocaleString()}`}
                 />
 
@@ -342,7 +344,7 @@ export const MonthlyTrendChart: React.FC<MonthlyTrendChartProps> = memo(({ data 
                   width={40}
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fill: "#10b981", fontSize: 9.5, fontWeight: 600 }}
+                  tick={{ fill: "#2ECC71", fontSize: 9.5, fontWeight: 600 }}
                   tickFormatter={(val) => `${Number(val).toLocaleString()} U`}
                 />
 
@@ -361,40 +363,40 @@ export const MonthlyTrendChart: React.FC<MonthlyTrendChartProps> = memo(({ data 
                   )}
                 />
 
-                {/* Left Metric: Cost Bars */}
+                {/* Left Metric: Cost Bars (#5DADE2 ฟ้า) */}
                 <Bar
                   yAxisId="left"
                   dataKey="totalCost"
                   name="totalCost"
-                  fill="url(#gradientCostBar)"
+                  fill="url(#gradientCostBarSky)"
                   radius={[4, 4, 0, 0]}
                   maxBarSize={26}
                   isAnimationActive={true}
                   animationDuration={350}
                 />
 
-                {/* Right Metric: Units Smooth Area/Line */}
+                {/* Right Metric: Units Smooth Area/Line (#2ECC71 เขียว) */}
                 <Area
                   yAxisId="right"
                   type="monotone"
                   dataKey="totalUnits"
                   name="totalUnits"
-                  stroke="#10B981"
-                  strokeWidth={2}
-                  fill="url(#gradientUnits)"
-                  dot={{ r: 2.5, fill: "#10B981", strokeWidth: 1.5, stroke: "#ffffff" }}
-                  activeDot={{ r: 4.5, fill: "#059669", stroke: "#ffffff", strokeWidth: 2 }}
+                  stroke="#2ECC71"
+                  strokeWidth={2.5}
+                  fill="url(#gradientUnitsGreen)"
+                  dot={{ r: 2.5, fill: "#2ECC71", strokeWidth: 1.5, stroke: "#ffffff" }}
+                  activeDot={{ r: 4.5, fill: "#27AE60", stroke: "#ffffff", strokeWidth: 2 }}
                   isAnimationActive={true}
                   animationDuration={450}
                 />
               </ComposedChart>
             ) : metricView === "cost" ? (
-              /* ================= 2. SINGLE COST FOCUS CHART (Bar & Trend Line) ================= */
+              /* SINGLE COST FOCUS CHART (Sky Blue) */
               <ComposedChart data={enrichedData} margin={{ top: 8, right: 6, left: -14, bottom: 0 }}>
                 <defs>
-                  <linearGradient id="gradientCostSingle" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#3B82F6" stopOpacity={0.9} />
-                    <stop offset="100%" stopColor="#1D4ED8" stopOpacity={0.7} />
+                  <linearGradient id="gradientCostSingleSky" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#5DADE2" stopOpacity={0.95} />
+                    <stop offset="100%" stopColor="#2980B9" stopOpacity={0.8} />
                   </linearGradient>
                 </defs>
 
@@ -411,7 +413,7 @@ export const MonthlyTrendChart: React.FC<MonthlyTrendChartProps> = memo(({ data 
                   width={48}
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fill: "#94a3b8", fontSize: 9.5 }}
+                  tick={{ fill: "#5DADE2", fontSize: 9.5 }}
                   tickFormatter={(val) => `฿${Number(val).toLocaleString()}`}
                 />
 
@@ -420,7 +422,7 @@ export const MonthlyTrendChart: React.FC<MonthlyTrendChartProps> = memo(({ data 
                 <Bar
                   dataKey="totalCost"
                   name="totalCost"
-                  fill="url(#gradientCostSingle)"
+                  fill="url(#gradientCostSingleSky)"
                   radius={[5, 5, 0, 0]}
                   maxBarSize={28}
                   isAnimationActive={true}
@@ -429,19 +431,19 @@ export const MonthlyTrendChart: React.FC<MonthlyTrendChartProps> = memo(({ data 
                 <Line
                   type="monotone"
                   dataKey="totalCost"
-                  stroke="#60A5FA"
+                  stroke="#3498DB"
                   strokeWidth={2}
                   strokeDasharray="4 4"
                   dot={false}
                 />
               </ComposedChart>
             ) : (
-              /* ================= 3. SINGLE UNITS FOCUS CHART (Emerald Area Gradient) ================= */
+              /* SINGLE UNITS FOCUS CHART (Emerald Green #2ECC71) */
               <AreaChart data={enrichedData} margin={{ top: 8, right: 6, left: -14, bottom: 0 }}>
                 <defs>
-                  <linearGradient id="gradientUnitsOnly" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10B981" stopOpacity={0.35} />
-                    <stop offset="95%" stopColor="#10B981" stopOpacity={0.02} />
+                  <linearGradient id="gradientUnitsGreenOnly" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#2ECC71" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="#2ECC71" stopOpacity={0.02} />
                   </linearGradient>
                 </defs>
 
@@ -458,7 +460,7 @@ export const MonthlyTrendChart: React.FC<MonthlyTrendChartProps> = memo(({ data 
                   width={44}
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fill: "#94a3b8", fontSize: 9.5 }}
+                  tick={{ fill: "#2ECC71", fontSize: 9.5 }}
                   tickFormatter={(val) => `${Number(val).toLocaleString()} U`}
                 />
 
@@ -468,11 +470,11 @@ export const MonthlyTrendChart: React.FC<MonthlyTrendChartProps> = memo(({ data 
                   type="monotone"
                   dataKey="totalUnits"
                   name="totalUnits"
-                  stroke="#059669"
+                  stroke="#2ECC71"
                   strokeWidth={2.5}
-                  fill="url(#gradientUnitsOnly)"
-                  dot={{ r: 3, fill: "#10B981", stroke: "#ffffff", strokeWidth: 1.5 }}
-                  activeDot={{ r: 5, fill: "#047857", stroke: "#ffffff", strokeWidth: 2 }}
+                  fill="url(#gradientUnitsGreenOnly)"
+                  dot={{ r: 3, fill: "#2ECC71", stroke: "#ffffff", strokeWidth: 1.5 }}
+                  activeDot={{ r: 5, fill: "#27AE60", stroke: "#ffffff", strokeWidth: 2 }}
                   isAnimationActive={true}
                   animationDuration={400}
                 />

@@ -4,10 +4,23 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useGoogleAuth } from "@/context/GoogleAuthContext";
 import { UserProfile, MeterLog, SummaryData, MonthlyChartData, RateLimitStatus } from "@/types";
-import { Header } from "@/components/Header";
+import { motion, AnimatePresence } from "framer-motion";
+import { ArrowLeft } from "lucide-react";
+import { Header, NavTabType } from "@/components/Header";
 import { SummaryCards } from "@/components/SummaryCards";
 import { MonthlyTrendChart } from "@/components/MonthlyTrendChart";
+import { SmartHomeDashboard } from "@/components/SmartHomeDashboard";
+import { DarkLoudDashboard } from "@/components/DarkLoudDashboard";
+import { DribbbleCleanDashboard } from "@/components/DribbbleCleanDashboard";
+import { VoltPulseDashboard } from "@/components/VoltPulseDashboard";
 import { DataHistoryTable, TimeFilterMode } from "@/components/DataHistoryTable";
+import { TopEnergyConsumers } from "@/components/TopEnergyConsumers";
+import { EnergySavingTipsCard } from "@/components/EnergySavingTipsCard";
+import { HomeMinimalView } from "@/components/HomeMinimalView";
+import { GlanceableHeroDashboard } from "@/components/GlanceableHeroDashboard";
+import { QuickMeterBottomSheet } from "@/components/QuickMeterBottomSheet";
+import { SecondaryMenuDrawer } from "@/components/SecondaryMenuDrawer";
+import { BottomNavigationBar } from "@/components/BottomNavigationBar";
 import { LogFormModal } from "@/components/LogFormModal";
 import { OnboardingModal } from "@/components/OnboardingModal";
 import { TariffUpdateModal } from "@/components/TariffUpdateModal";
@@ -28,9 +41,9 @@ import { getLocalCache, saveLocalCache } from "@/lib/client-cache";
 export default function KhafaiDashboard() {
   const router = useRouter();
   const { session, isAuthenticated, isLoading: isAuthLoading } = useGoogleAuth();
-  const currentUserId = session?.User_ID || "";
-  const currentEmail = session?.Email || "";
-  const currentName = session?.Name || "";
+  const currentUserId = session?.User_ID || "demo@khafai.app";
+  const currentEmail = session?.Email || "demo@khafai.app";
+  const currentName = session?.Name || "Demo User";
   const currentPicture = session?.Picture || "";
 
   const [isMounted, setIsMounted] = useState<boolean>(false);
@@ -38,12 +51,6 @@ export default function KhafaiDashboard() {
   useEffect(() => {
     setIsMounted(true);
   }, []);
-
-  useEffect(() => {
-    if (isMounted && !isAuthLoading && !isAuthenticated) {
-      router.push("/login");
-    }
-  }, [isMounted, isAuthLoading, isAuthenticated, router]);
 
   const [user, setUser] = useState<UserProfile>({
     User_ID: currentUserId,
@@ -58,6 +65,7 @@ export default function KhafaiDashboard() {
   const [rateLimit, setRateLimit] = useState<RateLimitStatus | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const [activeView, setActiveView] = useState<NavTabType>("home");
 
   // Time-Range Filter State
   const [timeFilter, setTimeFilter] = useState<TimeFilterMode>("this_month");
@@ -90,6 +98,8 @@ export default function KhafaiDashboard() {
   }, []);
 
   // Modals state
+  const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
+  const [isQuickRecordOpen, setIsQuickRecordOpen] = useState<boolean>(false);
   const [isLogFormOpen, setIsLogFormOpen] = useState<boolean>(false);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState<boolean>(false);
   const [editingLog, setEditingLog] = useState<MeterLog | null>(null);
@@ -286,9 +296,8 @@ export default function KhafaiDashboard() {
           setLogs(updatedLogs);
           saveLocalCache(userId, updatedUser, updatedLogs);
 
-          if (updatedLogs.length === 0 && !sessionStorage.getItem(`onboarding_dismissed_${userId}`)) {
-            setIsOnboardingOpen(true);
-          }
+          // Onboarding modal is disabled as requested by user
+          // User records meter directly from Quick Record or Header buttons
         } else if (data.error === "ACCOUNT_LOCKED") {
           addToast("error", "ระบบถูกระงับชั่วคราว", "เข้าสู่สถานะถูกล็อก");
         }
@@ -521,21 +530,32 @@ export default function KhafaiDashboard() {
     return <FullPageSkeleton />;
   }
 
-  if (isAuthLoading || !isAuthenticated) {
+  if (isAuthLoading && !session) {
     return <FullPageSkeleton />;
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans antialiased">
-      {/* Header Bar */}
-      <Header
-        user={user}
-        onOpenTariffModal={() => setIsTariffModalOpen(true)}
-        onOpenTestApiModal={() => setIsTestApiOpen(true)}
-        onResetData={handleResetDemo}
-        onOpenGoogleLoginModal={() => setIsGoogleLoginOpen(true)}
-        isLoading={isLoading}
-      />
+    <div className="min-h-screen bg-[#fafbfc] text-slate-800 flex flex-col font-sans antialiased">
+      {/* Header Bar - Shown on secondary views (Dashboard & History) */}
+      {activeView !== "home" && (
+        <Header
+          user={user}
+          onOpenTariffModal={() => setIsTariffModalOpen(true)}
+          onOpenTestApiModal={() => setIsTestApiOpen(true)}
+          onResetData={handleResetDemo}
+          onOpenGoogleLoginModal={() => setIsGoogleLoginOpen(true)}
+          onOpenMenu={() => setIsDrawerOpen(true)}
+          isLoading={isLoading}
+          activeNavTab={activeView}
+          onSelectNavTab={(tab) => {
+            if (tab === "settings") {
+              setIsTariffModalOpen(true);
+            } else {
+              setActiveView(tab);
+            }
+          }}
+        />
+      )}
 
       {/* Rate Limit Locked Full-screen Overlay */}
       {rateLimit && rateLimit.isLocked && (
@@ -549,54 +569,111 @@ export default function KhafaiDashboard() {
       )}
 
       {/* Main Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="flex-1 w-full mx-auto">
         {isFetchingInitialData ? (
-          <DashboardSkeleton />
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <DashboardSkeleton />
+          </div>
         ) : (
-          <>
-            {/* Executive Summary Cards with Smooth Number Counter Animation */}
-            <SummaryCards summary={summary} />
-
-            {/* 2-Column Responsive Layout for Chart and Table */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-              {/* Left Column: Monthly Trend Bar Chart (5 cols on Desktop) */}
-              <div className="lg:col-span-5 h-full">
-                <MonthlyTrendChart data={monthlyChart} />
-              </div>
-
-              {/* Right Column: Data History Table & Card List (7 cols on Desktop) */}
-              <div className="lg:col-span-7 h-full">
-                <DataHistoryTable
+          <AnimatePresence mode="wait">
+            {activeView === "home" ? (
+              <motion.div
+                key="home-glanceable-view"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="w-full h-full flex flex-col justify-center items-center"
+              >
+                <GlanceableHeroDashboard
+                  summary={summary}
+                  user={user}
                   logs={logs}
-                  filteredLogs={filteredLogs}
-                  timeFilter={timeFilter}
-                  isFilterChanging={isFilterChanging}
-                  onTimeFilterChange={handleTimeFilterChange}
-                  customStartDate={customStartDate}
-                  onCustomStartDateChange={handleCustomStartDateChange}
-                  customEndDate={customEndDate}
-                  onCustomEndDateChange={handleCustomEndDateChange}
-                  onOpenAddModal={() => {
-                    setEditingLog(null);
-                    setIsLogFormOpen(true);
-                  }}
-                  onOpenEditModal={(log) => {
-                    setEditingLog(log);
-                    setIsLogFormOpen(true);
-                  }}
-                  onConfirmDelete={handleOpenDeleteModal}
-                  onExportCSV={async (customLogs) => {
-                    const { exportToCSV } = await import("@/lib/pdf-export");
-                    exportToCSV(customLogs || filteredLogs, user, timeFilter);
-                  }}
-                  onExportPDF={async (customLogs) => {
-                    const { exportToPDF } = await import("@/lib/pdf-export");
-                    exportToPDF(customLogs || filteredLogs, user, timeFilter);
-                  }}
+                  onOpenQuickRecord={() => setIsQuickRecordOpen(true)}
+                  onOpenMenu={() => setIsDrawerOpen(true)}
+                  onNavigate={(view) => setActiveView(view)}
+                  onOpenHistory={() => setActiveView("history")}
+                  onOpenTariffModal={() => setIsTariffModalOpen(true)}
+                  onOpenGoogleLoginModal={() => setIsGoogleLoginOpen(true)}
                 />
-              </div>
-            </div>
-          </>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="dashboard-view"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-6 pb-8"
+              >
+                {/* Active View Content: Dashboard (Dribbble Clean Specification) or History */}
+                {activeView === "history" ? (
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between bg-white rounded-2xl p-3 border border-slate-100 shadow-xs mb-4">
+                      <span className="text-sm font-bold text-slate-800">
+                        ประวัติบันทึกการใช้ไฟฟ้า (History & Logs)
+                      </span>
+                      <button
+                        onClick={() => setActiveView("dashboard")}
+                        className="text-xs font-semibold text-[#8B70F8] hover:underline cursor-pointer"
+                      >
+                        ← กลับไปแดชบอร์ด
+                      </button>
+                    </div>
+
+                    <DataHistoryTable
+                      logs={logs}
+                      filteredLogs={filteredLogs}
+                      timeFilter={timeFilter}
+                      isFilterChanging={isFilterChanging}
+                      onTimeFilterChange={handleTimeFilterChange}
+                      customStartDate={customStartDate}
+                      onCustomStartDateChange={handleCustomStartDateChange}
+                      customEndDate={customEndDate}
+                      onCustomEndDateChange={handleCustomEndDateChange}
+                      onOpenAddModal={() => {
+                        setEditingLog(null);
+                        setIsLogFormOpen(true);
+                      }}
+                      onOpenEditModal={(log) => {
+                        setEditingLog(log);
+                        setIsLogFormOpen(true);
+                      }}
+                      onConfirmDelete={handleOpenDeleteModal}
+                      onExportCSV={async (customLogs) => {
+                        const { exportToCSV } = await import("@/lib/pdf-export");
+                        exportToCSV(customLogs || filteredLogs, user, timeFilter);
+                      }}
+                      onExportPDF={async (customLogs) => {
+                        const { exportToPDF } = await import("@/lib/pdf-export");
+                        exportToPDF(customLogs || filteredLogs, user, timeFilter);
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    {/* VoltPulse Clean Dashboard matching user specification */}
+                    <VoltPulseDashboard
+                      summary={summary}
+                      user={user}
+                      monthlyChartData={monthlyChart}
+                      logs={logs}
+                      onOpenTariffModal={() => setIsTariffModalOpen(true)}
+                      onOpenAddModal={() => {
+                        setEditingLog(null);
+                        setIsLogFormOpen(true);
+                      }}
+                      onOpenEditModal={(log) => {
+                        setEditingLog(log);
+                        setIsLogFormOpen(true);
+                      }}
+                      onOpenHistory={() => setActiveView("history")}
+                    />
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         )}
       </main>
 
@@ -648,18 +725,35 @@ export default function KhafaiDashboard() {
         isLoading={isLoading}
       />
 
-      {/* Onboarding Modal */}
-      <OnboardingModal
-        isOpen={isOnboardingOpen}
-        onClose={() => setIsOnboardingOpen(false)}
-        onCompleteOnboarding={handleCompleteOnboarding}
-        isLoading={isLoading}
-      />
+
 
       {/* Google Login Account Modal */}
       <GoogleLoginModal
         isOpen={isGoogleLoginOpen}
         onClose={() => setIsGoogleLoginOpen(false)}
+      />
+
+      {/* Quick Meter Bottom Sheet (2-second entry) */}
+      <QuickMeterBottomSheet
+        isOpen={isQuickRecordOpen}
+        onClose={() => setIsQuickRecordOpen(false)}
+        onSave={handleSaveLog}
+        existingLogs={logs}
+        user={user}
+        isLoading={isLoading}
+      />
+
+      {/* Secondary Menu Drawer (Progressive Disclosure) */}
+      <SecondaryMenuDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        user={user}
+        summary={summary}
+        onNavigate={(view) => setActiveView(view)}
+        onOpenTariffModal={() => setIsTariffModalOpen(true)}
+        onOpenTestApiModal={() => setIsTestApiOpen(true)}
+        onResetData={handleResetDemo}
+        onOpenGoogleLoginModal={() => setIsGoogleLoginOpen(true)}
       />
 
       {/* Toast Notifications */}

@@ -75,10 +75,11 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         if (parsed.User_ID) parsed.User_ID = cleanEmailString(parsed.User_ID);
         setSession(parsed);
       } else {
-        setSession(null);
+        // Automatically provide demo session so user can immediately view and use the app
+        setSession(DEFAULT_DEMO_USER);
       }
     } catch {
-      setSession(null);
+      setSession(DEFAULT_DEMO_USER);
     } finally {
       setIsLoading(false);
     }

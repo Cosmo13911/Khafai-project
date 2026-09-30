@@ -1,12 +1,27 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { Settings, LogOut, ChevronDown, Download, Smartphone, CheckCircle2 } from "lucide-react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Settings,
+  LogOut,
+  ChevronDown,
+  Download,
+  Smartphone,
+  CheckCircle2,
+  Zap,
+  Home,
+  LayoutDashboard,
+  History,
+  Sliders,
+  ShieldCheck,
+  LogIn,
+} from "lucide-react";
 import { UserProfile } from "@/types";
 import { useGoogleAuth } from "@/context/GoogleAuthContext";
 import { usePwa } from "@/context/PwaContext";
-import { KhafaiLogo } from "./KhafaiLogo";
+
+export type NavTabType = "home" | "dashboard" | "history" | "settings";
 
 interface HeaderProps {
   user: UserProfile;
@@ -14,7 +29,10 @@ interface HeaderProps {
   onOpenTestApiModal: () => void;
   onResetData: () => void;
   onOpenGoogleLoginModal: () => void;
+  onOpenMenu?: () => void;
   isLoading: boolean;
+  activeNavTab?: NavTabType;
+  onSelectNavTab?: (tab: NavTabType) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -23,215 +41,253 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenTestApiModal,
   onResetData,
   onOpenGoogleLoginModal,
+  onOpenMenu,
   isLoading,
+  activeNavTab = "dashboard",
+  onSelectNavTab,
 }) => {
-  const router = useRouter();
-  const { session, logout } = useGoogleAuth();
-  const { isInstalled, isInstallable, installApp } = usePwa();
+  const { session, logout, isAuthenticated } = useGoogleAuth();
+  const { isInstalled, installApp } = usePwa();
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
-  const [isDropdownClosing, setIsDropdownClosing] = useState<boolean>(false);
-  const [isMounted, setIsMounted] = useState<boolean>(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Close dropdown on outside click
   useEffect(() => {
-    setIsMounted(true);
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    }
+    if (isDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isDropdownOpen]);
+
+  // Billing cycle text (same as Home page)
+  const billCycleText = useMemo(() => {
+    const thaiMonths = [
+      "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.",
+      "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."
+    ];
+    const now = new Date();
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    return `รอบ 1-${lastDay} ${thaiMonths[now.getMonth()]}`;
   }, []);
 
-  const closeDropdown = (callback?: () => void) => {
-    if (!isDropdownOpen || isDropdownClosing) return;
-    setIsDropdownClosing(true);
-    setTimeout(() => {
-      setIsDropdownOpen(false);
-      setIsDropdownClosing(false);
-      if (callback) callback();
-    }, 180);
-  };
-
-  const toggleDropdown = () => {
-    if (isDropdownOpen) {
-      closeDropdown();
-    } else {
-      setIsDropdownOpen(true);
-      setIsDropdownClosing(false);
-    }
-  };
-
-  const rawName = (isMounted && session?.Name) || user.Email.split("@")[0] || "User";
-  const displayName = rawName;
-  const displayEmail = (isMounted && session?.Email) || user.Email;
-  const avatarChar = displayName.charAt(0).toUpperCase();
+  const activePicture = session?.Picture || user?.Picture;
+  const activeName = session?.Name || user?.Name || "ผู้ใช้งาน";
+  const activeEmail = session?.Email || user?.Email || "demo@khafai.app";
+  const isUserLoggedIn = isAuthenticated && !session?.isDemo;
 
   return (
-    <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
-        {/* Left Side: Khafai Brand Logo + App Name */}
-        <div className="flex items-center space-x-2.5">
-          <div className="w-8 h-8 flex items-center justify-center">
-            <KhafaiLogo className="w-8 h-8 drop-shadow-xs" />
-          </div>
-          <h1 className="text-lg font-semibold text-slate-900 tracking-tight">
-            Khafai
-          </h1>
+    <header className="sticky top-0 z-30 w-full bg-[#fafbfc]/90 backdrop-blur-md border-b border-slate-200/60 select-none transition-colors">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
+        {/* ================= Left: Home & Dashboard Switcher ================= */}
+        <div className="flex items-center gap-1 -ml-1.5">
+          <button
+            aria-label="หน้าแรก"
+            onClick={() => onSelectNavTab?.("home")}
+            className={`p-1.5 rounded-xl transition-all active:scale-95 cursor-pointer ${
+              activeNavTab === "home"
+                ? "bg-slate-900 text-white shadow-xs"
+                : "text-slate-400 hover:text-slate-800 hover:bg-slate-100"
+            }`}
+            id="btn-header-nav-home"
+            type="button"
+            title="หน้าแรก"
+          >
+            <Home className="w-4 h-4 stroke-[2]" />
+          </button>
+          <button
+            aria-label="แดชบอร์ด"
+            onClick={() => onSelectNavTab?.("dashboard")}
+            className={`p-1.5 rounded-xl transition-all active:scale-95 cursor-pointer ${
+              activeNavTab === "dashboard"
+                ? "bg-slate-900 text-white shadow-xs"
+                : "text-slate-400 hover:text-slate-800 hover:bg-slate-100"
+            }`}
+            id="btn-header-nav-dashboard"
+            type="button"
+            title="แดชบอร์ด"
+          >
+            <LayoutDashboard className="w-4 h-4 stroke-[1.8]" />
+          </button>
         </div>
 
-        {/* Right Side: Minimal Status + Tariff Chip + Profile Dropdown */}
-        <div className="flex items-center space-x-3">
-          {/* Status Dot */}
-          <div className="hidden sm:flex items-center space-x-1.5 text-xs text-emerald-700 bg-emerald-50/80 border border-emerald-200/60 px-2.5 py-1 rounded-full font-medium">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span>Connected</span>
-          </div>
+        {/* ================= Center: Whisper Period Indicator (Exact Home Match) ================= */}
+        <div
+          className="flex items-center gap-1.5 opacity-50 tracking-wider text-[11px] font-medium text-slate-500 uppercase"
+          data-purpose="cycle-indicator"
+        >
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          <span>{billCycleText}</span>
+        </div>
 
-          {/* Minimal Tariff Rate Chip */}
+        {/* ================= Right: User Profile Avatar with Exact Match Dropdown ================= */}
+        <div className="relative" ref={dropdownRef}>
           <button
-            onClick={onOpenTariffModal}
-            className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-full px-3 py-1.5 flex items-center space-x-1 cursor-pointer transition-colors min-h-[36px]"
-            title="แก้ไขอัตราค่าไฟฟ้าต่อหน่วย"
+            aria-label="โปรไฟล์ผู้ใช้งาน"
+            onClick={() => setIsDropdownOpen((prev) => !prev)}
+            className="p-1 -mr-1 rounded-full text-slate-500 hover:text-slate-800 active:scale-95 transition-all opacity-85 hover:opacity-100 focus:outline-none cursor-pointer flex items-center justify-center ring-2 ring-transparent hover:ring-slate-200"
+            id="btn-header-user-profile"
+            type="button"
+            title={activeName}
           >
-            <span>฿{user.Current_Rate_Per_Unit.toFixed(2)}/หน่วย</span>
+            {activePicture ? (
+              <img
+                src={activePicture}
+                alt={activeName}
+                className="w-7 h-7 rounded-full object-cover border border-slate-200/90 shadow-2xs"
+              />
+            ) : (
+              <div className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 border border-slate-200/90 text-slate-700 flex items-center justify-center text-xs font-semibold shadow-2xs transition-colors">
+                {activeName.charAt(0).toUpperCase()}
+              </div>
+            )}
           </button>
 
-          {/* User Profile Dropdown */}
-          <div className="relative">
-            <button
-              onClick={toggleDropdown}
-              className="flex items-center space-x-2 hover:bg-slate-100 rounded-full p-1 transition-colors cursor-pointer min-h-[36px]"
-            >
-              {isMounted && session?.Picture ? (
-                // eslint-disable-next-next-line @next/next/no-img-element
-                <img
-                  src={session.Picture}
-                  alt={displayName}
-                  className="w-7 h-7 rounded-full object-cover border border-slate-300"
-                />
-              ) : (
-                <div
-                  suppressHydrationWarning
-                  className="w-7 h-7 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-xs shadow-xs"
-                >
-                  {avatarChar}
-                </div>
-              )}
-              <span suppressHydrationWarning className="text-xs font-semibold text-slate-800 hidden sm:inline-block max-w-[120px] truncate">
-                {displayName}
-              </span>
-              <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${isDropdownOpen && !isDropdownClosing ? "rotate-180" : ""}`} />
-            </button>
-
-            {/* Dropdown Menu Overlay */}
+          {/* Profile Dropdown Menu - Exact Same Glanceable Minimal Theme as Home Page */}
+          <AnimatePresence>
             {isDropdownOpen && (
-              <>
-                <div
-                  className={`fixed inset-0 z-40 transition-opacity ${
-                    isDropdownClosing
-                      ? "animate-out fade-out duration-180 fill-mode-forwards"
-                      : "animate-in fade-in duration-180"
-                  }`}
-                  onClick={() => closeDropdown()}
-                />
-                <div
-                  className={`absolute right-0 mt-2 w-64 max-w-[calc(100vw-2rem)] origin-top-right bg-white rounded-2xl shadow-xl border border-slate-200 py-2 z-50 transition-all ${
-                    isDropdownClosing
-                      ? "animate-out fade-out zoom-out-95 slide-out-to-top-2 duration-180 fill-mode-forwards"
-                      : "animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-180"
-                  }`}
-                >
-                  {/* Profile Header: Avatar + Name + Email (Opening 0ms / Closing 40ms) */}
-                  <div
-                    className={`px-4 py-3 border-b border-slate-100 flex items-center space-x-3 ${
-                      isDropdownClosing ? "animate-stagger-hide" : "animate-stagger"
-                    }`}
-                    style={{ animationDelay: isDropdownClosing ? "40ms" : "0ms" }}
-                  >
-                    {isMounted && session?.Picture ? (
-                      // eslint-disable-next-next-line @next/next/no-img-element
-                      <img
-                        src={session.Picture}
-                        alt={displayName}
-                        className="w-9 h-9 rounded-full object-cover border border-slate-200"
-                      />
-                    ) : (
-                      <div
-                        suppressHydrationWarning
-                        className="w-9 h-9 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-sm shadow-xs flex-shrink-0"
-                      >
-                        {avatarChar}
-                      </div>
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <p suppressHydrationWarning className="text-xs font-bold text-slate-900 truncate">
-                        {displayName}
-                      </p>
-                      <p suppressHydrationWarning className="text-[11px] text-slate-500 truncate">
-                        {displayEmail}
-                      </p>
+              <motion.div
+                initial={{ opacity: 0, scale: 0.92, y: -6 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.92, y: -6 }}
+                transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                className="absolute right-0 mt-3 w-64 bg-white/95 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-slate-200/70 p-3 z-50 text-slate-800 origin-top-right select-none"
+              >
+                {/* User Identity Header */}
+                <div className="pb-3 border-b border-slate-100/90 flex items-center gap-2.5 px-1">
+                  {activePicture ? (
+                    <img
+                      src={activePicture}
+                      alt={activeName}
+                      className="w-8 h-8 rounded-full object-cover border border-slate-200/80 shrink-0"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center text-xs font-semibold shrink-0">
+                      {activeName.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs font-medium text-slate-900 truncate flex items-center gap-1.5">
+                      <span>{activeName}</span>
+                      {isUserLoggedIn && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block shrink-0" title="เข้าสู่ระบบแล้ว" />
+                      )}
+                    </div>
+                    <div className="text-[11px] text-slate-400 font-light truncate">
+                      {activeEmail}
                     </div>
                   </div>
+                </div>
 
-                  {/* Section 1: User Settings (Opening 20ms / Closing 20ms) */}
-                  <div
-                    className={`py-1 border-b border-slate-100 ${
-                      isDropdownClosing ? "animate-stagger-hide" : "animate-stagger"
-                    }`}
-                    style={{ animationDelay: "20ms" }}
+                {/* Status Indicator */}
+                <div className="py-2 px-1 border-b border-slate-100/90 flex items-center justify-between text-[11px]">
+                  <span className="text-slate-400 font-light">สถานะบัญชี</span>
+                  {isUserLoggedIn ? (
+                    <span className="inline-flex items-center gap-1 text-[10px] text-emerald-700 bg-emerald-50/70 border border-emerald-100/60 px-2 py-0.5 rounded-full font-normal">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                      <span>Google Verified</span>
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-slate-500 bg-slate-50 px-2 py-0.5 rounded-full font-light border border-slate-100">
+                      โหมดสาธิต (Demo)
+                    </span>
+                  )}
+                </div>
+
+                {/* Menu Actions */}
+                <div className="pt-2 space-y-1">
+                  {/* Switch to Home View */}
+                  <button
+                    onClick={() => {
+                      setIsDropdownOpen(false);
+                      onSelectNavTab?.("home");
+                    }}
+                    className="w-full flex items-center gap-2 px-2.5 py-2 text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-xl font-light transition-all cursor-pointer text-left"
                   >
+                    <Home className="w-3.5 h-3.5 text-slate-400" />
+                    <span>กลับหน้าหลักนาฬิกา</span>
+                  </button>
+
+                  {/* Switch to History View */}
+                  <button
+                    onClick={() => {
+                      setIsDropdownOpen(false);
+                      onSelectNavTab?.("history");
+                    }}
+                    className="w-full flex items-center gap-2 px-2.5 py-2 text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-xl font-light transition-all cursor-pointer text-left"
+                  >
+                    <History className="w-3.5 h-3.5 text-slate-400" />
+                    <span>ประวัติบันทึกทั้งหมด</span>
+                  </button>
+
+                  {/* Rate Settings */}
+                  <button
+                    onClick={() => {
+                      setIsDropdownOpen(false);
+                      onOpenTariffModal();
+                    }}
+                    className="w-full flex items-center justify-between px-2.5 py-2 text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-xl font-light transition-all cursor-pointer text-left group"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Settings className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 transition-colors" />
+                      <span>อัตราค่าไฟ</span>
+                    </div>
+                    <span className="text-[11px] font-normal text-slate-400 tabular-nums">
+                      ฿{user.Current_Rate_Per_Unit.toFixed(2)}/u
+                    </span>
+                  </button>
+
+                  {/* PWA Installation (if installable) */}
+                  {!isInstalled && (
                     <button
                       onClick={() => {
-                        closeDropdown(() => onOpenTariffModal());
+                        setIsDropdownOpen(false);
+                        installApp();
                       }}
-                      className="w-full flex items-center space-x-2.5 px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 font-medium transition-colors cursor-pointer text-left"
+                      className="w-full flex items-center justify-between px-2.5 py-2 text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-xl font-light transition-all cursor-pointer text-left"
                     >
-                      <Settings className="w-4 h-4 text-slate-500 flex-shrink-0" />
-                      <span>ตั้งค่าอัตราค่าไฟ</span>
-                    </button>
-
-                    {/* PWA Install / App status */}
-                    {!isInstalled ? (
-                      <button
-                        onClick={() => {
-                          closeDropdown(() => {
-                            installApp();
-                          });
-                        }}
-                        className="w-full flex items-center justify-between px-4 py-2 text-xs text-sky-700 hover:bg-sky-50 font-medium transition-colors cursor-pointer text-left"
-                      >
-                        <div className="flex items-center space-x-2.5">
-                          <Smartphone className="w-4 h-4 text-sky-600 flex-shrink-0" />
-                          <span>ติดตั้งแอปบนอุปกรณ์</span>
-                        </div>
-                        <Download className="w-3.5 h-3.5 text-sky-500" />
-                      </button>
-                    ) : (
-                      <div className="w-full flex items-center space-x-2.5 px-4 py-2 text-xs text-emerald-700 bg-emerald-50/50 font-medium">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                        <span>ติดตั้งเป็นแอปแล้ว</span>
+                      <div className="flex items-center gap-2">
+                        <Smartphone className="w-3.5 h-3.5 text-slate-400" />
+                        <span>ติดตั้งแอปบนอุปกรณ์</span>
                       </div>
-                    )}
-                  </div>
+                      <Download className="w-3 h-3 text-slate-400" />
+                    </button>
+                  )}
 
-                  {/* Section 3: Account Actions (Opening 40ms / Closing 0ms) */}
-                  <div
-                    className={`pt-1 ${
-                      isDropdownClosing ? "animate-stagger-hide" : "animate-stagger"
-                    }`}
-                    style={{ animationDelay: isDropdownClosing ? "0ms" : "40ms" }}
-                  >
+                  {/* Sign In or Log Out */}
+                  {isUserLoggedIn ? (
                     <button
                       onClick={() => {
-                        closeDropdown(() => {
-                          logout();
-                          router.push("/login");
-                        });
+                        setIsDropdownOpen(false);
+                        logout();
                       }}
-                      className="w-full flex items-center space-x-2.5 px-4 py-2 text-xs text-rose-600 hover:bg-rose-50 font-semibold transition-colors cursor-pointer text-left"
+                      className="w-full flex items-center gap-2 px-2.5 py-2 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50/60 rounded-xl font-normal transition-all cursor-pointer text-left"
                     >
-                      <LogOut className="w-4 h-4 text-rose-600 flex-shrink-0" />
+                      <LogOut className="w-3.5 h-3.5 text-rose-500" />
                       <span>ออกจากระบบ</span>
                     </button>
-                  </div>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setIsDropdownOpen(false);
+                        onOpenGoogleLoginModal();
+                      }}
+                      className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs text-slate-900 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-normal shadow-xs hover:shadow transition-all cursor-pointer active:scale-98 mt-1"
+                    >
+                      <LogIn className="w-3.5 h-3.5" />
+                      <span>เข้าสู่ระบบ Google</span>
+                    </button>
+                  )}
                 </div>
-              </>
+              </motion.div>
             )}
-          </div>
+          </AnimatePresence>
         </div>
       </div>
     </header>
