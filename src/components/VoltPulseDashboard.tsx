@@ -97,12 +97,13 @@ export const VoltPulseDashboard: React.FC<VoltPulseDashboardProps> = ({
 
   // Chart data from monthly logs (or fallback 6 months preview)
   const chartDisplayData = useMemo(() => {
+    const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
     if (monthlyChartData && monthlyChartData.length > 0) {
       return monthlyChartData.map((d) => ({
         month: d.monthName,
         cost: Math.round(d.totalCost),
         units: Number(d.totalUnits.toFixed(1)),
-        isCurrent: d.isCurrentMonth,
+        isCurrent: d.monthKey === currentMonthKey,
       }));
     }
     // Fallback if empty
