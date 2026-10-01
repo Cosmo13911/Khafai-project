@@ -36,14 +36,6 @@ const GoogleAuthContext = createContext<GoogleAuthContextType>({
   logout: () => {},
 });
 
-const DEFAULT_DEMO_USER: GoogleUserSession = {
-  User_ID: "demo@khafai.app",
-  Email: "demo@khafai.app",
-  Name: "Demo User",
-  Picture: "https://ui-avatars.com/api/?name=Demo+User&background=2563eb&color=fff",
-  isDemo: true,
-};
-
 function cleanEmailString(raw?: string): string {
   let email = (raw || "").trim().toLowerCase();
   if (email.endsWith("@khafai.app")) {
@@ -75,11 +67,10 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         if (parsed.User_ID) parsed.User_ID = cleanEmailString(parsed.User_ID);
         setSession(parsed);
       } else {
-        // Automatically provide demo session so user can immediately view and use the app
-        setSession(DEFAULT_DEMO_USER);
+        setSession(null);
       }
     } catch {
-      setSession(DEFAULT_DEMO_USER);
+      setSession(null);
     } finally {
       setIsLoading(false);
     }

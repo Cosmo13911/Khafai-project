@@ -75,6 +75,11 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
     return `${logs.length} รายการทั้งหมด`;
   }, [filteredLogs.length, logs.length, timeFilter]);
 
+  // Display logs in reverse-chronological order (newest date first on top)
+  const displayLogs = useMemo(() => {
+    return [...filteredLogs].reverse();
+  }, [filteredLogs]);
+
   return (
     <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm/60 flex flex-col transition-all duration-300 ease-out">
       {/* Header section with Actions */}
@@ -339,7 +344,7 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
                     suppressHydrationWarning
                     className="divide-y divide-slate-100/80 animate-in fade-in slide-in-from-bottom-1 duration-200 ease-out"
                   >
-                    {filteredLogs.map((log, index) => (
+                    {displayLogs.map((log, index) => (
                       <tr
                         key={log.Log_ID}
                         style={{ animationDelay: `${index * 35}ms` }}
@@ -413,7 +418,7 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
               suppressHydrationWarning
               className="block md:hidden space-y-2 max-h-[380px] overflow-y-auto no-scrollbar"
             >
-              {filteredLogs.map((log, index) => (
+              {displayLogs.map((log, index) => (
                 <div
                   key={log.Log_ID}
                   style={{ animationDelay: `${index * 35}ms` }}

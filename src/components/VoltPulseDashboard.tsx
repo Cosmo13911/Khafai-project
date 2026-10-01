@@ -484,7 +484,7 @@ export const VoltPulseDashboard: React.FC<VoltPulseDashboardProps> = ({
 
         {logs && logs.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3">
-            {logs.slice(0, 3).map((log) => (
+            {[...logs].reverse().slice(0, 3).map((log) => (
               <div
                 key={log.Log_ID}
                 onClick={() => onOpenEditModal && onOpenEditModal(log)}

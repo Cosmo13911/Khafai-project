@@ -41,9 +41,9 @@ import { getLocalCache, saveLocalCache } from "@/lib/client-cache";
 export default function KhafaiDashboard() {
   const router = useRouter();
   const { session, isAuthenticated, isLoading: isAuthLoading } = useGoogleAuth();
-  const currentUserId = session?.User_ID || "demo@khafai.app";
-  const currentEmail = session?.Email || "demo@khafai.app";
-  const currentName = session?.Name || "Demo User";
+  const currentUserId = session?.User_ID || "";
+  const currentEmail = session?.Email || "";
+  const currentName = session?.Name || "";
   const currentPicture = session?.Picture || "";
 
   const [isMounted, setIsMounted] = useState<boolean>(false);
@@ -51,6 +51,13 @@ export default function KhafaiDashboard() {
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  // Redirect to login if user is not authenticated after auth loading finishes
+  useEffect(() => {
+    if (!isAuthLoading && !session) {
+      router.replace("/login");
+    }
+  }, [isAuthLoading, session, router]);
 
   const [user, setUser] = useState<UserProfile>({
     User_ID: currentUserId,
@@ -546,7 +553,7 @@ export default function KhafaiDashboard() {
     return <FullPageSkeleton />;
   }
 
-  if (isAuthLoading && !session) {
+  if (isAuthLoading || !session) {
     return <FullPageSkeleton />;
   }
 

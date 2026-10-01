@@ -79,7 +79,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   const activePicture = session?.Picture || user?.Picture;
   const activeName = session?.Name || user?.Name || "ผู้ใช้งาน";
-  const activeEmail = session?.Email || user?.Email || "demo@khafai.app";
+  const activeEmail = session?.Email || user?.Email || "";
   const isUserLoggedIn = isAuthenticated && !session?.isDemo;
 
   return (
@@ -188,16 +188,10 @@ export const Header: React.FC<HeaderProps> = ({
                 {/* Status Indicator */}
                 <div className="py-2 px-1 border-b border-slate-100/90 flex items-center justify-between text-[11px]">
                   <span className="text-slate-400 font-light">สถานะบัญชี</span>
-                  {isUserLoggedIn ? (
-                    <span className="inline-flex items-center gap-1 text-[10px] text-emerald-700 bg-emerald-50/70 border border-emerald-100/60 px-2 py-0.5 rounded-full font-normal">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                      <span>Google Verified</span>
-                    </span>
-                  ) : (
-                    <span className="text-[10px] text-slate-500 bg-slate-50 px-2 py-0.5 rounded-full font-light border border-slate-100">
-                      โหมดสาธิต (Demo)
-                    </span>
-                  )}
+                  <span className="inline-flex items-center gap-1 text-[10px] text-emerald-700 bg-emerald-50/70 border border-emerald-100/60 px-2 py-0.5 rounded-full font-normal">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    <span>Google Verified</span>
+                  </span>
                 </div>
 
                 {/* Menu Actions */}

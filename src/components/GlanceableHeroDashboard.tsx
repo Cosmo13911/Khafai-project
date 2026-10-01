@@ -122,15 +122,16 @@ export const GlanceableHeroDashboard: React.FC<GlanceableHeroDashboardProps> = (
   const diffUnitsText = useMemo(() => {
     if (isFreshCycle) return null;
     if (logs.length >= 2) {
-      const latest = logs[0].Units_Used || 0;
+      // logs are sorted chronologically ascending, so latest log is at the end
+      const latest = logs[logs.length - 1].Units_Used || 0;
       return latest > 0 ? `+${latest.toFixed(1)} หน่วย จากครั้งก่อน` : `+${latest.toFixed(1)} หน่วย`;
     }
-    return "+12.4 หน่วย จากเมื่อวาน";
+    return null;
   }, [logs, isFreshCycle]);
 
   const activePicture = session?.Picture || user?.Picture;
   const activeName = session?.Name || user?.Name || "ผู้ใช้งาน";
-  const activeEmail = session?.Email || user?.Email || "demo@khafai.app";
+  const activeEmail = session?.Email || user?.Email || "";
   const isUserLoggedIn = isAuthenticated && !session?.isDemo;
 
   return (
@@ -226,25 +227,21 @@ export const GlanceableHeroDashboard: React.FC<GlanceableHeroDashboardProps> = (
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block shrink-0" title="เข้าสู่ระบบแล้ว" />
                       )}
                     </div>
-                    <div className="text-[11px] text-slate-400 font-light truncate">
-                      {activeEmail}
-                    </div>
+                    {activeEmail && (
+                      <div className="text-[11px] text-slate-400 font-light truncate">
+                        {activeEmail}
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 {/* Status Indicator */}
                 <div className="py-2 px-1 border-b border-slate-100/90 flex items-center justify-between text-[11px]">
                   <span className="text-slate-400 font-light">สถานะบัญชี</span>
-                  {isUserLoggedIn ? (
-                    <span className="inline-flex items-center gap-1 text-[10px] text-emerald-700 bg-emerald-50/70 border border-emerald-100/60 px-2 py-0.5 rounded-full font-normal">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                      <span>Google Verified</span>
-                    </span>
-                  ) : (
-                    <span className="text-[10px] text-slate-500 bg-slate-50 px-2 py-0.5 rounded-full font-light border border-slate-100">
-                      โหมดสาธิต (Demo)
-                    </span>
-                  )}
+                  <span className="inline-flex items-center gap-1 text-[10px] text-emerald-700 bg-emerald-50/70 border border-emerald-100/60 px-2 py-0.5 rounded-full font-normal">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    <span>Google Verified</span>
+                  </span>
                 </div>
 
                 {/* Menu Actions */}

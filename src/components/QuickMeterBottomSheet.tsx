@@ -36,9 +36,27 @@ export const QuickMeterBottomSheet: React.FC<QuickMeterBottomSheetProps> = ({
   const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Latest recorded meter reading
-  const latestLog = existingLogs && existingLogs.length > 0 ? existingLogs[0] : null;
-  const previousReading = latestLog ? latestLog.Meter_Reading : 1452.0;
+  // Find chronologically preceding log based on current recordDate
+  const prevLog = React.useMemo(() => {
+    if (!existingLogs || existingLogs.length === 0) return null;
+    const sorted = [...existingLogs].sort((a, b) => {
+      const d = a.Record_Date.localeCompare(b.Record_Date);
+      if (d !== 0) return d;
+      return a.Created_At.localeCompare(b.Created_At);
+    });
+    let found: MeterLog | null = null;
+    for (let i = 0; i < sorted.length; i++) {
+      if (sorted[i].Record_Date <= recordDate) {
+        found = sorted[i];
+      } else {
+        break;
+      }
+    }
+    // If no preceding log before recordDate, fallback to latest log overall
+    return found || sorted[sorted.length - 1];
+  }, [existingLogs, recordDate]);
+
+  const previousReading = prevLog ? prevLog.Meter_Reading : 0;
   const ratePerUnit = user?.Current_Rate_Per_Unit || 8.0;
 
   useEffect(() => {
@@ -58,7 +76,7 @@ export const QuickMeterBottomSheet: React.FC<QuickMeterBottomSheetProps> = ({
 
   // Adjust input via Quick Numerical Steppers (+1.0, +5.0, +10.0)
   const adjustInput = (amount: number) => {
-    const current = parseFloat(meterReading) || (previousReading + amount);
+    const current = parseFloat(meterReading) || (previousReading > 0 ? previousReading + amount : amount);
     const nextVal = (current + (meterReading ? amount : 0)).toFixed(1);
     setMeterReading(nextVal);
   };
@@ -72,7 +90,7 @@ export const QuickMeterBottomSheet: React.FC<QuickMeterBottomSheetProps> = ({
   let isUnderPrevious = false;
 
   if (isValidNumber) {
-    if (isNewMeter || !latestLog) {
+    if (isNewMeter || !prevLog) {
       calculatedUnits = numericInput;
     } else {
       calculatedUnits = numericInput - previousReading;
@@ -95,11 +113,6 @@ export const QuickMeterBottomSheet: React.FC<QuickMeterBottomSheetProps> = ({
       return;
     }
 
-    if (isUnderPrevious && !isNewMeter) {
-      setErrorMessage(`เลขมิเตอร์ต้องมากกว่าครั้งก่อน (${previousReading.toLocaleString()} kWh)`);
-      return;
-    }
-
     const validation = validateMeterReadingRange(
       existingLogs,
       numericInput,
@@ -112,18 +125,13 @@ export const QuickMeterBottomSheet: React.FC<QuickMeterBottomSheetProps> = ({
     } else {
       setErrorMessage(null);
     }
-  }, [meterReading, numericInput, isValidNumber, isUnderPrevious, isNewMeter, recordDate, existingLogs, previousReading]);
+  }, [meterReading, numericInput, isValidNumber, isNewMeter, recordDate, existingLogs]);
 
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
 
     if (!meterReading.trim() || !isValidNumber) {
       setErrorMessage("กรุณาระบุเลขมิเตอร์ที่ถูกต้อง");
-      return;
-    }
-
-    if (isUnderPrevious && !isNewMeter) {
-      setErrorMessage(`เลขมิเตอร์ต้องมากกว่าครั้งก่อน (${previousReading.toLocaleString()})`);
       return;
     }
 
@@ -182,7 +190,7 @@ export const QuickMeterBottomSheet: React.FC<QuickMeterBottomSheetProps> = ({
           <div>
             <h3 className="text-base font-medium text-slate-900">บันทึกเลขมิเตอร์</h3>
             <p className="text-xs text-slate-400">
-              จดเลขครั้งก่อน: {previousReading.toFixed(1)} kWh
+              {prevLog ? `จดเลขครั้งก่อน: ${previousReading.toLocaleString()} kWh (${prevLog.Record_Date})` : "ยังไม่มีข้อมูลจดเลขครั้งก่อน"}
             </p>
           </div>
           <button
@@ -209,7 +217,7 @@ export const QuickMeterBottomSheet: React.FC<QuickMeterBottomSheetProps> = ({
                 ref={inputRef}
                 className="w-full text-3xl font-light tabular-nums py-3 px-4 rounded-xl border border-slate-200 focus:border-slate-800 focus:ring-0 outline-none text-slate-900 tracking-tight bg-slate-50/50 transition-colors"
                 id="meter-input"
-                placeholder={(previousReading + 12.4).toFixed(1)}
+                placeholder={prevLog ? (previousReading + 10.0).toFixed(1) : "เช่น 1000.0"}
                 step="any"
                 inputMode="decimal"
                 type="number"
