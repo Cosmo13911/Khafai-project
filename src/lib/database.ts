@@ -124,10 +124,14 @@ export function updateUserProfile(
   return updatedUser;
 }
 
-export function getMeterLogs(userId: string): MeterLog[] {
+export function getMeterLogs(userId: string, email?: string): MeterLog[] {
   const cleanUserId = sanitizeEmail(userId);
-  const user = getUserProfile(cleanUserId);
-  const userLogs = dbLogs.filter((l) => l.User_ID === cleanUserId);
+  const cleanEmail = email ? sanitizeEmail(email) : "";
+  const user = getUserProfile(cleanUserId, cleanEmail);
+  const userLogs = dbLogs.filter((l) => {
+    const lUserId = sanitizeEmail(l.User_ID);
+    return lUserId === cleanUserId || (cleanEmail && lUserId === cleanEmail);
+  });
   return recalculateLogs(userLogs, user.Current_Rate_Per_Unit);
 }
 

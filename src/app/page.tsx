@@ -29,6 +29,7 @@ import { GoogleLoginModal } from "@/components/GoogleLoginModal";
 import { TestApiModal } from "@/components/TestApiModal";
 import { RateLimitLockedState } from "@/components/RateLimitLockedState";
 import { DashboardSkeleton, FullPageSkeleton, HomeHeroSkeleton } from "@/components/DashboardSkeleton";
+import { DataSyncLoadingScreen } from "@/components/DataSyncLoadingScreen";
 import { ToastNotification, ToastMessage } from "@/components/ToastNotification";
 import {
   recalculateLogs,
@@ -233,12 +234,13 @@ export default function KhafaiDashboard() {
         "x-user-picture": encodeURIComponent(currentPicture),
         ...extra,
       };
-      if (session?.idToken) {
-        headers["Authorization"] = `Bearer ${session.idToken}`;
+      const authToken = session?.idToken || session?.accessToken;
+      if (authToken) {
+        headers["Authorization"] = `Bearer ${authToken}`;
       }
       return headers;
     },
-    [currentUserId, currentEmail, currentName, currentPicture, session?.idToken]
+    [currentUserId, currentEmail, currentName, currentPicture, session?.idToken, session?.accessToken]
   );
 
   // Fetch real data strictly for currentUserId from API (SWR Non-blocking pattern)
@@ -266,8 +268,9 @@ export default function KhafaiDashboard() {
           "x-user-name": encodeURIComponent(activeName),
           "x-user-picture": encodeURIComponent(activePicture),
         };
-        if (session?.idToken) {
-          headers["Authorization"] = `Bearer ${session.idToken}`;
+        const authToken = session?.idToken || session?.accessToken;
+        if (authToken) {
+          headers["Authorization"] = `Bearer ${authToken}`;
         }
 
         const res = await fetch("/api/meter-logs", {
@@ -563,11 +566,21 @@ export default function KhafaiDashboard() {
   }, [timeFilter, customStartDate, customEndDate]);
 
   if (!isMounted) {
-    return <FullPageSkeleton />;
+    return <DataSyncLoadingScreen userEmail={currentEmail} />;
   }
 
   if (isAuthLoading || !session) {
-    return <FullPageSkeleton />;
+    return <DataSyncLoadingScreen userEmail={currentEmail} />;
+  }
+
+  // Show full loading screen when on a new device or data is syncing from Google Sheets
+  if (isFetchingInitialData && logs.length === 0) {
+    return (
+      <DataSyncLoadingScreen
+        onRetry={() => fetchData(currentUserId, true, currentEmail, currentName, currentPicture)}
+        userEmail={currentEmail}
+      />
+    );
   }
 
   return (

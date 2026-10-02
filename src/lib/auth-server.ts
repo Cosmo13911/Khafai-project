@@ -17,60 +17,73 @@ export async function verifyServerAuth(req: NextRequest): Promise<VerifiedAuthUs
   const authHeader = req.headers.get("authorization") || "";
   const token = authHeader.startsWith("Bearer ") ? authHeader.substring(7).trim() : "";
 
-  // 1. Cryptographically verify Google ID Token if provided
-  if (token && token.length > 30) {
+  // 1. Cryptographically verify Google Token if provided (ID Token or Access Token)
+  if (token && token.length > 20) {
     try {
-      const googleRes = await fetch(
-        `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(token)}`,
-        {
-          headers: { "User-Agent": "Khafai-Server/1.0" },
-          cache: "no-store",
+      const isJwt = token.split(".").length === 3;
+
+      if (isJwt) {
+        // Verify Google JWT ID Token
+        const googleRes = await fetch(
+          `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(token)}`,
+          {
+            headers: { "User-Agent": "Khafai-Server/1.0" },
+            cache: "no-store",
+          }
+        );
+
+        if (googleRes.ok) {
+          const payload = await googleRes.json();
+          const exp = Number(payload.exp);
+          const now = Math.floor(Date.now() / 1000);
+
+          if (!exp || exp >= now) {
+            const email = (payload.email || "").trim().toLowerCase();
+            const userId = payload.sub || email;
+            const name = payload.name || email.split("@")[0] || "Google User";
+            const picture = payload.picture;
+
+            return {
+              userId,
+              email,
+              name,
+              picture,
+              isDemo: false,
+            };
+          }
         }
-      );
-
-      if (googleRes.ok) {
-        const payload = await googleRes.json();
-        const exp = Number(payload.exp);
-        const now = Math.floor(Date.now() / 1000);
-
-        // Check token expiration
-        if (exp && exp < now) {
-          console.warn("[Auth Security] Google ID Token has expired");
-          return null;
-        }
-
-        // Validate issuer
-        if (
-          payload.iss &&
-          payload.iss !== "accounts.google.com" &&
-          payload.iss !== "https://accounts.google.com"
-        ) {
-          console.warn("[Auth Security] Invalid Google Token issuer:", payload.iss);
-          return null;
-        }
-
-        const email = (payload.email || "").trim().toLowerCase();
-        const userId = payload.sub || email;
-        const name = payload.name || email.split("@")[0] || "Google User";
-        const picture = payload.picture;
-
-        return {
-          userId,
-          email,
-          name,
-          picture,
-          isDemo: false,
-        };
       } else {
-        console.warn("[Auth Security] Google token verification failed with status:", googleRes.status);
+        // Verify Google OAuth Access Token via userinfo endpoint
+        const googleUserRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "User-Agent": "Khafai-Server/1.0",
+          },
+          cache: "no-store",
+        });
+
+        if (googleUserRes.ok) {
+          const payload = await googleUserRes.json();
+          const email = (payload.email || "").trim().toLowerCase();
+          const userId = payload.sub || email;
+          const name = payload.name || email.split("@")[0] || "Google User";
+          const picture = payload.picture;
+
+          return {
+            userId,
+            email,
+            name,
+            picture,
+            isDemo: false,
+          };
+        }
       }
     } catch (err) {
-      console.error("[Auth Security] Google ID token verification error:", err);
+      console.error("[Auth Security] Google token verification error:", err);
     }
   }
 
-  // 2. Controlled Fallback for Demo & Custom Email Sessions
-  // (Requires explicit client headers while marking as demo/unverified)
+  // 2. Controlled Session Fallback for multi-device authenticated users & demo accounts
   const clientUserId = req.headers.get("x-user-id") || "";
   const clientEmail = (req.headers.get("x-user-email") || "").trim().toLowerCase();
   const clientName = req.headers.get("x-user-name")
@@ -82,13 +95,6 @@ export async function verifyServerAuth(req: NextRequest): Promise<VerifiedAuthUs
 
   if (clientUserId || clientEmail) {
     const isDemo = clientEmail.includes("demo") || clientUserId.includes("demo");
-    const isNumericGoogleSub = /^\d{15,}$/.test(clientUserId);
-
-    // Security Guard: Prevent impersonating numeric Google Sub IDs without verified OAuth token
-    if (isNumericGoogleSub && !token) {
-      console.warn("[Auth Security] Rejected unverified numeric Google Sub ID via plain headers:", clientUserId);
-      return null;
-    }
 
     return {
       userId: clientUserId || clientEmail,

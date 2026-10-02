@@ -20,7 +20,7 @@ interface GoogleAuthContextType {
   setCustomClientId: (clientId: string) => void;
   loginWithCredential: (credential: string) => void;
   loginWithCustomEmail: (email: string, name?: string) => void;
-  loginWithDemoAccount: (userId: string, email: string, name: string, picture?: string) => void;
+  loginWithDemoAccount: (userId: string, email: string, name: string, picture?: string, accessToken?: string) => void;
   logout: () => void;
 }
 
@@ -134,13 +134,14 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     saveSession(newSession);
   };
 
-  const loginWithDemoAccount = (userId: string, email: string, name: string, picture?: string) => {
+  const loginWithDemoAccount = (userId: string, email: string, name: string, picture?: string, accessToken?: string) => {
     const cleanEmail = email.trim().toLowerCase();
     const demoSession: GoogleUserSession = {
       User_ID: userId || cleanEmail,
       Email: cleanEmail,
       Name: name,
       Picture: picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=2563eb&color=fff`,
+      accessToken: accessToken,
       isDemo: false,
     };
     saveSession(demoSession);

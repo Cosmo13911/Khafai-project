@@ -147,13 +147,15 @@ function findOrCreateUser(userId, email) {
 // --- METER LOG HANDLERS ---
 function handleGetMeterLogs(userId, email) {
   const user = findOrCreateUser(userId, email);
-  const logs = getUserLogsRaw(userId);
+  const canonicalUserId = user.User_ID;
+  const logs = getUserLogsRaw(canonicalUserId, userId, email);
   return { success: true, user: user, logs: recalculateLogsArray(logs, user.Current_Rate_Per_Unit) };
 }
 
 function handleCreateMeterLog(userId, params) {
   const email = params.Email || params.email || "";
   const user = findOrCreateUser(userId, email);
+  const canonicalUserId = user.User_ID;
   const recordDate = params.Record_Date;
   const meterReading = parseFloat(params.Meter_Reading);
   const isNewMeter = params.Is_New_Meter === true || params.Is_New_Meter === "true";
@@ -162,7 +164,7 @@ function handleCreateMeterLog(userId, params) {
     return { success: false, error: "INVALID_INPUT", message: "กรุณากรอกวันที่และเลขมิเตอร์ให้ถูกต้อง" };
   }
 
-  const existingLogs = getUserLogsRaw(userId);
+  const existingLogs = getUserLogsRaw(canonicalUserId, userId, email);
   const validation = validateRange(existingLogs, meterReading, recordDate, isNewMeter);
   if (!validation.isValid) {
     return { success: false, error: "RANGE_VALIDATION_FAILED", message: validation.errorMessage };
@@ -170,20 +172,21 @@ function handleCreateMeterLog(userId, params) {
 
   const logId = "log-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_METER_LOGS);
-  sheet.appendRow([logId, userId, recordDate, meterReading, 0, 0, isNewMeter ? true : false, new Date().toISOString()]);
+  sheet.appendRow([logId, canonicalUserId, recordDate, meterReading, 0, 0, isNewMeter ? true : false, new Date().toISOString()]);
 
-  return { success: true, log_id: logId, logs: recalculateUserLogs(userId, user.Current_Rate_Per_Unit) };
+  return { success: true, log_id: logId, logs: recalculateUserLogs(canonicalUserId, user.Current_Rate_Per_Unit) };
 }
 
 function handleUpdateMeterLog(userId, params) {
   const email = params.Email || params.email || "";
   const user = findOrCreateUser(userId, email);
+  const canonicalUserId = user.User_ID;
   const logId = params.log_id || params.Log_ID;
   const recordDate = params.Record_Date;
   const meterReading = parseFloat(params.Meter_Reading);
   const isNewMeter = params.Is_New_Meter === true || params.Is_New_Meter === "true";
 
-  const existingLogs = getUserLogsRaw(userId);
+  const existingLogs = getUserLogsRaw(canonicalUserId, userId, email);
   const validation = validateRange(existingLogs, meterReading, recordDate, isNewMeter, logId);
   if (!validation.isValid) {
     return { success: false, error: "RANGE_VALIDATION_FAILED", message: validation.errorMessage };
@@ -192,7 +195,12 @@ function handleUpdateMeterLog(userId, params) {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_METER_LOGS);
   const data = sheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === logId && data[i][1] === userId) {
+    const rowUserId = String(data[i][1]).trim().toLowerCase();
+    const isUserMatch = rowUserId === String(canonicalUserId).toLowerCase() ||
+                        rowUserId === String(userId).toLowerCase() ||
+                        (email && rowUserId === String(email).trim().toLowerCase());
+    if (data[i][0] === logId && isUserMatch) {
+      sheet.getRange(i + 1, 2).setValue(canonicalUserId);
       sheet.getRange(i + 1, 3).setValue(recordDate);
       sheet.getRange(i + 1, 4).setValue(meterReading);
       sheet.getRange(i + 1, 7).setValue(isNewMeter ? true : false);
@@ -200,14 +208,15 @@ function handleUpdateMeterLog(userId, params) {
     }
   }
 
-  return { success: true, logs: recalculateUserLogs(userId, user.Current_Rate_Per_Unit) };
+  return { success: true, logs: recalculateUserLogs(canonicalUserId, user.Current_Rate_Per_Unit) };
 }
 
 function handleDeleteMeterLog(userId, params) {
   const email = params.Email || params.email || "";
   const user = findOrCreateUser(userId, email);
+  const canonicalUserId = user.User_ID;
   const logId = params.log_id || params.Log_ID;
-  const logs = getUserLogsRaw(userId);
+  const logs = getUserLogsRaw(canonicalUserId, userId, email);
 
   // Delete Protection Rule Check
   const protection = checkDeleteProtectionRule(logs, logId);
@@ -218,25 +227,38 @@ function handleDeleteMeterLog(userId, params) {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_METER_LOGS);
   const data = sheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === logId && data[i][1] === userId) {
+    const rowUserId = String(data[i][1]).trim().toLowerCase();
+    const isUserMatch = rowUserId === String(canonicalUserId).toLowerCase() ||
+                        rowUserId === String(userId).toLowerCase() ||
+                        (email && rowUserId === String(email).trim().toLowerCase());
+    if (data[i][0] === logId && isUserMatch) {
       sheet.deleteRow(i + 1);
       break;
     }
   }
 
-  return { success: true, logs: recalculateUserLogs(userId, user.Current_Rate_Per_Unit) };
+  return { success: true, logs: recalculateUserLogs(canonicalUserId, user.Current_Rate_Per_Unit) };
 }
 
 // --- ENGINE LOGIC ---
-function getUserLogsRaw(userId) {
+function getUserLogsRaw(canonicalUserId, fallbackUserId, email) {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_METER_LOGS);
   const data = sheet.getDataRange().getValues();
   const logs = [];
+  const targetIds = {};
+  if (canonicalUserId) targetIds[String(canonicalUserId).trim().toLowerCase()] = true;
+  if (fallbackUserId) targetIds[String(fallbackUserId).trim().toLowerCase()] = true;
+  if (email) targetIds[String(email).trim().toLowerCase()] = true;
+
   for (let i = 1; i < data.length; i++) {
-    if (String(data[i][1]) === String(userId)) {
+    const rowUserId = String(data[i][1]).trim().toLowerCase();
+    if (targetIds[rowUserId]) {
       logs.push({
-        Log_ID: data[i][0], User_ID: String(data[i][1]), Record_Date: formatDate(data[i][2]),
-        Meter_Reading: parseFloat(data[i][3]), Units_Used: parseFloat(data[i][4]) || 0,
+        Log_ID: data[i][0],
+        User_ID: String(data[i][1]),
+        Record_Date: formatDate(data[i][2]),
+        Meter_Reading: parseFloat(data[i][3]),
+        Units_Used: parseFloat(data[i][4]) || 0,
         Total_Cost: parseFloat(data[i][5]) || 0,
         Is_New_Meter: data[i][6] === true || data[i][6] === "true" || data[i][6] === "TRUE",
         Created_At: data[i][7]

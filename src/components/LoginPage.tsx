@@ -36,7 +36,8 @@ export default function LoginPage() {
             data.sub || data.email,
             data.email,
             data.name || data.email.split("@")[0],
-            data.picture
+            data.picture,
+            tokenResponse.access_token
           );
           router.push("/");
         }

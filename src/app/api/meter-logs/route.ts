@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
   }
 
   let user = getUserProfile(userId, userEmail, userName, userPicture);
-  let logs = getMeterLogs(userId);
+  let logs = getMeterLogs(userId, userEmail);
   let isGasConnected = false;
 
   // Await real database fetch from Google Apps Script Web App
@@ -132,7 +132,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const existingLogs = getMeterLogs(userId);
+    const existingLogs = getMeterLogs(userId, userEmail);
 
     // Range Validation check
     const validation = validateMeterReadingRange(

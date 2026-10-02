@@ -4,6 +4,7 @@ export interface GoogleUserSession {
   Name: string;
   Picture?: string;
   idToken?: string;
+  accessToken?: string;
   isDemo?: boolean;
 }
 

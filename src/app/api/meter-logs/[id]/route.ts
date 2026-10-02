@@ -64,7 +64,7 @@ export async function PUT(
 
   try {
     const body = await req.json();
-    const existingLogs = getMeterLogs(userId);
+    const existingLogs = getMeterLogs(userId, userEmail);
 
     if (body.Meter_Reading !== undefined && body.Record_Date !== undefined) {
       const validation = validateMeterReadingRange(
@@ -94,7 +94,7 @@ export async function PUT(
 
     // Fast local optimistic update
     let updated = updateMeterLog(userId, logId, body);
-    let updatedLogs = getMeterLogs(userId);
+    let updatedLogs = getMeterLogs(userId, userEmail);
     let updatedUser = getUserProfile(userId, userEmail, userName, userPicture);
     let isGasConnected = false;
 
@@ -188,7 +188,7 @@ export async function DELETE(
   }
 
   try {
-    const existingLogs = getMeterLogs(userId);
+    const existingLogs = getMeterLogs(userId, userEmail);
 
     // Business Logic: Prevent deleting if it would invalidate subsequent cycle calculations
     const deleteCheck = checkDeleteProtection(existingLogs, logId);
@@ -209,7 +209,7 @@ export async function DELETE(
 
     // Fast local optimistic deletion
     deleteMeterLog(userId, logId);
-    let updatedLogs = getMeterLogs(userId);
+    let updatedLogs = getMeterLogs(userId, userEmail);
     let updatedUser = getUserProfile(userId, userEmail, userName, userPicture);
     let isGasConnected = false;
 
