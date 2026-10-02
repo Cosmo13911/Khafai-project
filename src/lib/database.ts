@@ -58,9 +58,10 @@ export function syncMeterLogsFromGas(
     User_ID: cleanUserId,
     Meter_Reading: Number(log.Meter_Reading),
     Units_Used: Number(log.Units_Used || 0),
-    Total_Cost: Number(log.Total_Cost || 0),
+    Total_Cost: Number(log.Total_Cost !== undefined && log.Total_Cost !== null ? log.Total_Cost : 0),
     Is_New_Meter: Boolean(log.Is_New_Meter),
   }));
+  // Preserves actual Total_Cost from Google Sheets database via recalculateLogs
   const recalculated = recalculateLogs(formattedGasLogs, user.Current_Rate_Per_Unit);
   dbLogs = [...otherLogs, ...recalculated];
   return recalculated;

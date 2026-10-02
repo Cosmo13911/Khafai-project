@@ -6,9 +6,9 @@ import { MeterLog, SummaryData, MonthlyChartData } from "@/types";
  */
 export function sortLogs(logs: MeterLog[]): MeterLog[] {
   return [...logs].sort((a, b) => {
-    const dateCompare = a.Record_Date.localeCompare(b.Record_Date);
+    const dateCompare = (a.Record_Date || "").localeCompare(b.Record_Date || "");
     if (dateCompare !== 0) return dateCompare;
-    return a.Created_At.localeCompare(b.Created_At);
+    return (a.Created_At || "").localeCompare(b.Created_At || "");
   });
 }
 
@@ -16,8 +16,9 @@ export function sortLogs(logs: MeterLog[]): MeterLog[] {
  * Auto Recalculate Logic Engine:
  * Whenever Create, Update, Delete occurs or Tariff changes:
  * 1. Sorts all records by Record_Date
- * 2. Recalculates Units_Used & Total_Cost using latest Current_Rate_Per_Unit
- * 3. Handles New Meter Cycle (Is_New_Meter = true -> Units_Used = 0)
+ * 2. Recalculates Units_Used; preserves actual Total_Cost if already present (> 0),
+ *    otherwise calculates Total_Cost using Current_Rate_Per_Unit
+ * 3. Handles New Meter Cycle (Is_New_Meter = true -> Units_Used = 0, Total_Cost = 0)
  */
 export function recalculateLogs(
   logs: MeterLog[],
@@ -36,8 +37,14 @@ export function recalculateLogs(
 
     const prevLog = sorted[index - 1];
     const rawUnits = log.Meter_Reading - prevLog.Meter_Reading;
-    const unitsUsed = Math.max(0, rawUnits);
-    const totalCost = Number((unitsUsed * currentRatePerUnit).toFixed(2));
+    const unitsUsed = Number(Math.max(0, rawUnits).toFixed(2));
+
+    // Preserve real Total_Cost if present and positive (> 0); otherwise calculate using currentRatePerUnit
+    const existingCost = Number(log.Total_Cost);
+    const totalCost =
+      !isNaN(existingCost) && existingCost > 0
+        ? Number(existingCost.toFixed(2))
+        : Number((unitsUsed * currentRatePerUnit).toFixed(2));
 
     return {
       ...log,
@@ -90,7 +97,8 @@ export function validateMeterReadingRange(
     minAllowed = prevLog.Meter_Reading;
   }
 
-  if (nextLog) {
+  // If nextLog exists and is NOT a new meter cycle, it acts as an upper bound
+  if (nextLog && !nextLog.Is_New_Meter) {
     maxAllowed = nextLog.Meter_Reading;
   }
 
@@ -133,7 +141,9 @@ export function checkDeleteProtection(
 
   const targetLog = sorted[targetIndex];
 
-  if (targetLog.Is_New_Meter) {
+  // Protect cycle baseline records (Is_New_Meter = true or first log of database)
+  // if child records exist in that cycle.
+  if (targetLog.Is_New_Meter || targetIndex === 0) {
     // Check if there is a next record that belongs to the same cycle (i.e. before next Is_New_Meter)
     const hasChildInCycle =
       targetIndex < sorted.length - 1 && !sorted[targetIndex + 1].Is_New_Meter;
@@ -278,20 +288,19 @@ export function calculateSummaryData(
     prevCost = prev2Sum.cost;
   }
 
-  // Calculate percentage changes
+  // Calculate percentage changes (strictly when preceding comparison period has valid data)
   let unitsPercentChange: number | null = null;
   if (prevUnits > 0) {
     unitsPercentChange = Number((((periodUnits - prevUnits) / prevUnits) * 100).toFixed(1));
-  } else if (periodUnits > 0 && prevUnits === 0) {
-    unitsPercentChange = 100;
   }
 
   let costPercentChange: number | null = null;
   if (prevCost > 0) {
     costPercentChange = Number((((periodCost - prevCost) / prevCost) * 100).toFixed(1));
-  } else if (periodCost > 0 && prevCost === 0) {
-    costPercentChange = 100;
   }
+
+  // Count cumulative total cycles across all historical logs
+  const totalAllCycles = sortedAll.filter((log) => log.Is_New_Meter).length;
 
   return {
     currentMonthUnits: Number(periodUnits.toFixed(1)),
@@ -301,9 +310,10 @@ export function calculateSummaryData(
     unitsPercentChange,
     costPercentChange,
     currentRate,
-    totalCyclesCount: Math.max(1, periodCyclesCount || 1),
+    totalCyclesCount: Math.max(1, totalAllCycles || periodCyclesCount || 1),
     currentMonthName: currentPeriodLabel,
     prevMonthName: prevPeriodLabel,
+    prevPeriodLabel: prevPeriodLabel,
     latestMeterReading,
     latestRecordDate,
   };

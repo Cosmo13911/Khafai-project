@@ -134,7 +134,7 @@ export const SecondaryMenuDrawer: React.FC<SecondaryMenuDrawerProps> = ({
                 {/* 3. ประวัติการจดเลขมิเตอร์ */}
                 <button
                   onClick={() => {
-                    onNavigate("history");
+                    onNavigate("dashboard");
                     onClose();
                   }}
                   className="flex items-center gap-3 text-sm text-slate-500 hover:text-slate-900 py-1 transition-colors text-left cursor-pointer"
@@ -198,7 +198,13 @@ export const SecondaryMenuDrawer: React.FC<SecondaryMenuDrawerProps> = ({
                       }}
                       className="flex items-center gap-2 text-xs text-rose-500 hover:text-rose-600 font-medium py-1 cursor-pointer"
                     >
-                      <span>ออกจากระบบ ({session?.Name || user.Email})</span>
+                      <span>
+                        ออกจากระบบ
+                        {(() => {
+                          const raw = (session?.Name || user?.Email || "").replace(/\s*\([^)]*\)\s*$/g, "").trim();
+                          return raw && !/^\d{8,}$/.test(raw) && !raw.endsWith("@khafai.app") ? ` (${raw})` : "";
+                        })()}
+                      </span>
                     </button>
                   ) : (
                     <button

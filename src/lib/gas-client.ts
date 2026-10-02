@@ -56,6 +56,11 @@ export async function callGasApi<T = Record<string, unknown>>(
     payload.name = nameVal;
     payload.Name = nameVal;
   }
+  if (extraParams.Record_Date) urlObj.searchParams.set("Record_Date", String(extraParams.Record_Date));
+  if (extraParams.Meter_Reading !== undefined) urlObj.searchParams.set("Meter_Reading", String(extraParams.Meter_Reading));
+  if (extraParams.Is_New_Meter !== undefined) urlObj.searchParams.set("Is_New_Meter", String(extraParams.Is_New_Meter));
+  if (extraParams.log_id || extraParams.Log_ID) urlObj.searchParams.set("log_id", String(extraParams.log_id || extraParams.Log_ID));
+  if (extraParams.Current_Rate_Per_Unit !== undefined) urlObj.searchParams.set("Current_Rate_Per_Unit", String(extraParams.Current_Rate_Per_Unit));
 
   // Set 15s timeout controller to give GAS sufficient execution time for Google Sheets write & recalculation
   const controller = new AbortController();

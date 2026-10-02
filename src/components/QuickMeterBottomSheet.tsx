@@ -91,14 +91,15 @@ export const QuickMeterBottomSheet: React.FC<QuickMeterBottomSheetProps> = ({
 
   if (isValidNumber) {
     if (isNewMeter || !prevLog) {
-      calculatedUnits = numericInput;
+      calculatedUnits = 0;
+      calculatedCost = 0;
     } else {
       calculatedUnits = numericInput - previousReading;
       if (calculatedUnits < 0) {
         isUnderPrevious = true;
       }
+      calculatedCost = Math.max(0, calculatedUnits * ratePerUnit);
     }
-    calculatedCost = Math.max(0, calculatedUnits * ratePerUnit);
   }
 
   // Range validation
@@ -257,16 +258,20 @@ export const QuickMeterBottomSheet: React.FC<QuickMeterBottomSheetProps> = ({
           </div>
 
           {/* Live Calculation Preview */}
-          {isValidNumber && !errorMessage && calculatedUnits >= 0 && (
+          {isValidNumber && !errorMessage && !isUnderPrevious && (
             <div className="bg-emerald-50/80 border border-emerald-100 rounded-xl p-3 flex items-center justify-between text-xs text-emerald-900 animate-in fade-in">
               <div className="flex items-center gap-1.5">
                 <Check className="w-3.5 h-3.5 text-emerald-600" />
                 <span>
-                  ใช้เพิ่ม: <strong>+{calculatedUnits.toFixed(1)}</strong> kWh
+                  {isNewMeter || !prevLog ? (
+                    <>จุดเริ่มต้นรอบมิเตอร์ใหม่: <strong>0.0</strong> kWh</>
+                  ) : (
+                    <>ใช้เพิ่ม: <strong>+{calculatedUnits.toFixed(1)}</strong> kWh</>
+                  )}
                 </span>
               </div>
               <span className="font-semibold text-emerald-700">
-                +฿{calculatedCost.toFixed(2)}
+                {isNewMeter || !prevLog ? "฿0.00" : `+฿${calculatedCost.toFixed(2)}`}
               </span>
             </div>
           )}

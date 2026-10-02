@@ -8,11 +8,12 @@ import {
   Download,
   Plus,
   History,
-  Info,
   Calendar,
   ChevronDown,
   FileSpreadsheet,
   X,
+  Sparkles,
+  Inbox,
 } from "lucide-react";
 import { MeterLog } from "@/types";
 import { CustomDatePickerPopover } from "./CustomDatePickerPopover";
@@ -32,8 +33,8 @@ interface DataHistoryTableProps {
   onOpenAddModal: () => void;
   onOpenEditModal: (log: MeterLog) => void;
   onConfirmDelete: (log: MeterLog) => void;
-  onExportCSV: (filteredLogs?: MeterLog[]) => void;
-  onExportPDF: (filteredLogs?: MeterLog[]) => void;
+  onExportCSV: (filteredLogs?: MeterLog[], customRange?: { start?: string; end?: string }) => void;
+  onExportPDF: (filteredLogs?: MeterLog[], customRange?: { start?: string; end?: string }) => void;
 }
 
 export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
@@ -55,6 +56,13 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
   const [showCustomInputs, setShowCustomInputs] = useState<boolean>(false);
   const [isExportMenuOpen, setIsExportMenuOpen] = useState<boolean>(false);
 
+  // Active custom date range object if custom filter is active
+  const currentCustomRange = useMemo(() => {
+    return timeFilter === "custom" && (customStartDate || customEndDate)
+      ? { start: customStartDate, end: customEndDate }
+      : undefined;
+  }, [timeFilter, customStartDate, customEndDate]);
+
   // Dynamic counter subtitle
   const subtitleText = useMemo(() => {
     if (timeFilter === "this_month") {
@@ -70,128 +78,198 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
       return `${filteredLogs.length} รายการในปีนี้ (จากทั้งหมด ${logs.length} รายการ)`;
     }
     if (timeFilter === "custom") {
-      return `${filteredLogs.length} รายการตามช่วงเวลา (จากทั้งหมด ${logs.length} รายการ)`;
+      if (customStartDate && customEndDate) {
+        return `${filteredLogs.length} รายการ (${customStartDate} ถึง ${customEndDate})`;
+      }
+      return `${filteredLogs.length} รายการตามช่วงเวลา`;
     }
     return `${logs.length} รายการทั้งหมด`;
-  }, [filteredLogs.length, logs.length, timeFilter]);
+  }, [filteredLogs.length, logs.length, timeFilter, customStartDate, customEndDate]);
 
   // Display logs in reverse-chronological order (newest date first on top)
   const displayLogs = useMemo(() => {
     return [...filteredLogs].reverse();
   }, [filteredLogs]);
 
+  // Summary statistics for the currently filtered view
+  const periodStats = useMemo(() => {
+    const units = filteredLogs.reduce((sum, log) => sum + (log.Units_Used || 0), 0);
+    const cost = filteredLogs.reduce((sum, log) => sum + (log.Total_Cost || 0), 0);
+    return { units, cost, count: filteredLogs.length };
+  }, [filteredLogs]);
+
+  // Filter mode human-readable label
+  const filterLabel = useMemo(() => {
+    switch (timeFilter) {
+      case "this_week": return "สัปดาห์นี้";
+      case "this_month": return "เดือนนี้";
+      case "last_month": return "เดือนก่อนหน้า";
+      case "this_year": return "ปีนี้";
+      case "custom": return customStartDate && customEndDate ? `${customStartDate} ถึง ${customEndDate}` : "ช่วงเวลากำหนดเอง";
+      default: return "ทั้งหมด";
+    }
+  }, [timeFilter, customStartDate, customEndDate]);
+
   return (
-    <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm/60 flex flex-col transition-all duration-300 ease-out">
-      {/* Header section with Actions */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-2 pb-3 border-b border-slate-100 w-full">
-        <div className="flex items-center space-x-2.5">
-          <div className="w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center text-[#2ECC71] shrink-0">
-            <History className="w-4 h-4" />
+    <div className="bg-white rounded-2xl p-4 sm:p-6 border border-slate-200/80 shadow-[0_2px_16px_rgba(0,0,0,0.03)] flex flex-col transition-all duration-300 ease-out">
+      {/* ================= Header section with Actions ================= */}
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4 pb-4 border-b border-slate-100 w-full">
+        <div className="flex items-center space-x-3 min-w-0">
+          <div className="w-9 h-9 rounded-xl bg-slate-900 text-white flex items-center justify-center shrink-0 shadow-xs">
+            <History className="w-4 h-4 stroke-[2]" />
           </div>
-          <div>
-            <h2 className="text-base font-semibold text-slate-900 tracking-tight">ประวัติการบันทึกมิเตอร์ไฟ</h2>
-            <p suppressHydrationWarning className="text-xs text-slate-400">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h2 className="text-base sm:text-lg font-semibold text-slate-900 tracking-tight truncate">
+                ประวัติบันทึกการใช้ไฟฟ้า
+              </h2>
+              <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-600 tabular-nums">
+                {filteredLogs.length} รายการ
+              </span>
+            </div>
+            <p suppressHydrationWarning className="text-xs text-slate-400 font-light mt-0.5 truncate">
               {subtitleText}
             </p>
           </div>
         </div>
 
-        {/* Action Controls: Export Dropdown (Secondary) & Primary CTA */}
+        {/* Action Controls: Export Dropdown & Primary CTA */}
         <div className="flex items-center space-x-2 ml-auto shrink-0">
-          {/* Single Split Export Dropdown */}
+          {/* Split Export Dropdown */}
           <div className="relative">
             <button
               onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
-              className="flex items-center space-x-1.5 text-xs font-medium text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200/60 px-2.5 sm:px-3 py-2 rounded-xl transition-colors cursor-pointer min-h-[38px] sm:min-h-[40px]"
+              className={`flex items-center space-x-1.5 text-xs font-medium px-3 py-2 rounded-xl transition-all cursor-pointer min-h-[38px] active:scale-95 ${
+                isExportMenuOpen
+                  ? "bg-slate-900 text-white shadow-xs border border-transparent"
+                  : "bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200/70"
+              }`}
               title="ส่งออกรายงานข้อมูล"
             >
-              <Download className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-              <span className="hidden sm:inline">ส่งออก</span>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              <Download className={`w-3.5 h-3.5 shrink-0 ${isExportMenuOpen ? "text-white" : "text-slate-500"}`} />
+              <span>ส่งออก</span>
+              <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${isExportMenuOpen ? "rotate-180 text-slate-300" : "text-slate-400"}`} />
             </button>
 
             {isExportMenuOpen && (
               <>
                 {/* Backdrop overlay */}
                 <div
-                  className="fixed inset-0 z-40 bg-slate-900/20 backdrop-blur-xs transition-opacity sm:bg-transparent sm:backdrop-blur-none"
+                  className="fixed inset-0 z-40 bg-slate-900/30 backdrop-blur-xs transition-opacity sm:bg-transparent sm:backdrop-blur-none"
                   onClick={() => setIsExportMenuOpen(false)}
                 />
 
                 {/* Mobile View: Bottom Sheet */}
-                <div className="fixed inset-x-0 bottom-0 z-50 rounded-t-2xl bg-white p-4 shadow-2xl border-t border-slate-100 animate-in slide-in-from-bottom duration-200 sm:hidden">
-                  <div className="flex items-center justify-between pb-3 mb-2 border-b border-slate-100">
-                    <span className="text-sm font-semibold text-slate-900">เลือกรูปแบบการส่งออก</span>
+                <div className="fixed inset-x-0 bottom-0 z-50 rounded-t-3xl bg-white p-5 shadow-[0_-8px_30px_rgba(0,0,0,0.12)] border-t border-slate-100 animate-in slide-in-from-bottom duration-200 sm:hidden select-none">
+                  <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-4" />
+
+                  <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
+                    <div>
+                      <span className="text-sm font-semibold text-slate-900 block">ส่งออกรายงานข้อมูล</span>
+                      <span className="text-xs text-slate-400 font-light">
+                        {timeFilter === "custom" && customStartDate && customEndDate
+                          ? `ช่วงเวลา: ${customStartDate} ถึง ${customEndDate}`
+                          : "เลือกรูปแบบไฟล์รายงาน"}
+                      </span>
+                    </div>
                     <button
                       onClick={() => setIsExportMenuOpen(false)}
-                      className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors"
+                      className="w-7 h-7 flex items-center justify-center rounded-full bg-slate-100 text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer text-xs"
                     >
-                      <X className="w-4 h-4" />
+                      <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
 
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     <button
                       onClick={() => {
                         setIsExportMenuOpen(false);
-                        onExportPDF(filteredLogs);
+                        onExportPDF(filteredLogs, currentCustomRange);
                       }}
-                      className="w-full flex items-center space-x-3 p-3 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer text-left"
+                      className="w-full flex items-center space-x-3.5 p-3 rounded-2xl bg-slate-50 hover:bg-slate-100/80 border border-slate-100 transition-all cursor-pointer text-left active:scale-[0.99]"
                     >
-                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-rose-50 text-rose-600 shrink-0">
-                        <FileText className="w-4 h-4" />
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white shrink-0 shadow-xs">
+                        <FileText className="w-4 h-4 stroke-[1.8]" />
                       </div>
                       <div className="flex flex-col min-w-0">
                         <span className="text-xs font-semibold text-slate-900">ส่งออกเป็น PDF (.pdf)</span>
-                        <span className="text-[10px] text-slate-400">ไฟล์รายงานพร้อมสรุปยอด</span>
+                        <span className="text-[11px] text-slate-400 font-light">
+                          {timeFilter === "custom" && customStartDate && customEndDate
+                            ? `รายงานสรุปช่วง ${customStartDate} ถึง ${customEndDate}`
+                            : "รายงานสรุปค่าไฟและสถิติภาพรวม"}
+                        </span>
                       </div>
                     </button>
 
                     <button
                       onClick={() => {
                         setIsExportMenuOpen(false);
-                        onExportCSV(filteredLogs);
+                        onExportCSV(filteredLogs, currentCustomRange);
                       }}
-                      className="w-full flex items-center space-x-3 p-3 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer text-left"
+                      className="w-full flex items-center space-x-3.5 p-3 rounded-2xl bg-slate-50 hover:bg-slate-100/80 border border-slate-100 transition-all cursor-pointer text-left active:scale-[0.99]"
                     >
-                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 shrink-0">
-                        <FileSpreadsheet className="w-4 h-4" />
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-700 shrink-0">
+                        <FileSpreadsheet className="w-4 h-4 stroke-[1.8]" />
                       </div>
                       <div className="flex flex-col min-w-0">
                         <span className="text-xs font-semibold text-slate-900">ส่งออกเป็น CSV (.csv)</span>
-                        <span className="text-[10px] text-slate-400">ไฟล์ข้อมูลตารางดิบ</span>
+                        <span className="text-[11px] text-slate-400 font-light">
+                          {timeFilter === "custom" && customStartDate && customEndDate
+                            ? `ข้อมูลตารางช่วง ${customStartDate} ถึง ${customEndDate}`
+                            : "ข้อมูลตารางดิบสำหรับเปิดใน Excel / Sheets"}
+                        </span>
                       </div>
                     </button>
                   </div>
                 </div>
 
-                {/* Desktop View: Floating Dropdown */}
-                <div className="hidden sm:block absolute right-0 top-full mt-1.5 w-60 bg-white rounded-xl border border-slate-100 shadow-lg p-1.5 z-50 origin-top-right animate-in fade-in zoom-in-95 duration-150">
+                {/* Desktop View: Floating Glass Dropdown */}
+                <div className="hidden sm:block absolute right-0 top-full mt-2 w-64 bg-white/95 backdrop-blur-xl rounded-2xl border border-slate-100 shadow-[0_12px_36px_rgba(0,0,0,0.08)] p-1.5 z-50 origin-top-right animate-in fade-in zoom-in-95 duration-150 select-none">
+                  <div className="px-2.5 py-1.5 mb-1 border-b border-slate-100">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                      {timeFilter === "custom" && customStartDate && customEndDate
+                        ? `ช่วง: ${customStartDate} ถึง ${customEndDate}`
+                        : "เลือกรูปแบบไฟล์"}
+                    </span>
+                  </div>
+
                   <button
                     onClick={() => {
                       setIsExportMenuOpen(false);
-                      onExportPDF(filteredLogs);
+                      onExportPDF(filteredLogs, currentCustomRange);
                     }}
-                    className="w-full flex items-start space-x-2.5 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-lg transition-colors cursor-pointer text-left"
+                    className="w-full flex items-center space-x-3 p-2.5 text-xs font-medium rounded-xl hover:bg-slate-50 transition-all cursor-pointer text-left group"
                   >
-                    <FileText className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900 text-white shrink-0 group-hover:scale-105 transition-transform shadow-2xs">
+                      <FileText className="w-4 h-4 stroke-[1.8]" />
+                    </div>
                     <div className="flex flex-col min-w-0">
-                      <span className="font-medium text-slate-900 whitespace-nowrap">ส่งออกเป็น PDF (.pdf)</span>
-                      <span className="text-[10px] text-slate-400 whitespace-nowrap">ไฟล์รายงานพร้อมสรุปยอด</span>
+                      <span className="font-semibold text-slate-900">เอกสาร PDF (.pdf)</span>
+                      <span className="text-[10px] text-slate-400 font-light">
+                        {timeFilter === "custom" && customStartDate && customEndDate
+                          ? `${customStartDate} ถึง ${customEndDate}`
+                          : "รายงานสรุปยอดและสถิติ"}
+                      </span>
                     </div>
                   </button>
 
                   <button
                     onClick={() => {
                       setIsExportMenuOpen(false);
-                      onExportCSV(filteredLogs);
+                      onExportCSV(filteredLogs, currentCustomRange);
                     }}
-                    className="w-full flex items-start space-x-2.5 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-lg transition-colors cursor-pointer text-left"
+                    className="w-full flex items-center space-x-3 p-2.5 text-xs font-medium rounded-xl hover:bg-slate-50 transition-all cursor-pointer text-left group"
                   >
-                    <FileSpreadsheet className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 border border-emerald-100 text-emerald-700 shrink-0 group-hover:scale-105 transition-transform">
+                      <FileSpreadsheet className="w-4 h-4 stroke-[1.8]" />
+                    </div>
                     <div className="flex flex-col min-w-0">
-                      <span className="font-medium text-slate-900 whitespace-nowrap">ส่งออกเป็น CSV (.csv)</span>
-                      <span className="text-[10px] text-slate-400 whitespace-nowrap">ไฟล์ข้อมูลตารางดิบ</span>
+                      <span className="font-semibold text-slate-900">ไฟล์ข้อมูล CSV (.csv)</span>
+                      <span className="text-[10px] text-slate-400 font-light">
+                        {timeFilter === "custom" && customStartDate && customEndDate
+                          ? `${customStartDate} ถึง ${customEndDate}`
+                          : "ตารางสำหรับ Excel / Sheets"}
+                      </span>
                     </div>
                   </button>
                 </div>
@@ -202,23 +280,23 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
           {/* Primary CTA: Add Record */}
           <button
             onClick={onOpenAddModal}
-            className="flex items-center space-x-1.5 text-xs font-medium text-white bg-[#2ECC71] hover:bg-[#27ae60] px-3 sm:px-3.5 py-2 rounded-xl shadow-xs transition-colors cursor-pointer min-h-[38px] sm:min-h-[40px]"
+            className="flex items-center space-x-1.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 active:scale-95 px-3.5 py-2 rounded-xl shadow-xs transition-all cursor-pointer min-h-[38px]"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-4 h-4 stroke-[2]" />
             <span>เพิ่มบันทึก</span>
           </button>
         </div>
       </div>
 
-      {/* Filter Controls Bar Container */}
-      <div className="relative mb-3 border-b border-slate-100/60 pb-2">
-        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+      {/* ================= Time Filter Navigation Tabs ================= */}
+      <div className="relative mb-3 border-b border-slate-100 pb-3">
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
           <button
             onClick={() => onTimeFilterChange("this_week")}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
+            className={`px-3 py-1.5 rounded-full text-xs transition-all cursor-pointer whitespace-nowrap ${
               timeFilter === "this_week"
-                ? "bg-slate-900 text-white font-semibold shadow-xs"
-                : "bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200/40"
+                ? "bg-slate-900 text-white font-medium shadow-xs"
+                : "bg-slate-100/80 hover:bg-slate-200/70 text-slate-600 font-normal border border-transparent"
             }`}
           >
             สัปดาห์นี้
@@ -226,10 +304,10 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
 
           <button
             onClick={() => onTimeFilterChange("this_month")}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
+            className={`px-3 py-1.5 rounded-full text-xs transition-all cursor-pointer whitespace-nowrap ${
               timeFilter === "this_month"
-                ? "bg-slate-900 text-white font-semibold shadow-xs"
-                : "bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200/40"
+                ? "bg-slate-900 text-white font-medium shadow-xs"
+                : "bg-slate-100/80 hover:bg-slate-200/70 text-slate-600 font-normal border border-transparent"
             }`}
           >
             เดือนนี้
@@ -237,10 +315,10 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
 
           <button
             onClick={() => onTimeFilterChange("last_month")}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
+            className={`px-3 py-1.5 rounded-full text-xs transition-all cursor-pointer whitespace-nowrap ${
               timeFilter === "last_month"
-                ? "bg-slate-900 text-white font-semibold shadow-xs"
-                : "bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200/40"
+                ? "bg-slate-900 text-white font-medium shadow-xs"
+                : "bg-slate-100/80 hover:bg-slate-200/70 text-slate-600 font-normal border border-transparent"
             }`}
           >
             เดือนก่อนหน้า
@@ -248,10 +326,10 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
 
           <button
             onClick={() => onTimeFilterChange("this_year")}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
+            className={`px-3 py-1.5 rounded-full text-xs transition-all cursor-pointer whitespace-nowrap ${
               timeFilter === "this_year"
-                ? "bg-slate-900 text-white font-semibold shadow-xs"
-                : "bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200/40"
+                ? "bg-slate-900 text-white font-medium shadow-xs"
+                : "bg-slate-100/80 hover:bg-slate-200/70 text-slate-600 font-normal border border-transparent"
             }`}
           >
             ปีนี้
@@ -259,10 +337,10 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
 
           <button
             onClick={() => onTimeFilterChange("all")}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
+            className={`px-3 py-1.5 rounded-full text-xs transition-all cursor-pointer whitespace-nowrap ${
               timeFilter === "all"
-                ? "bg-slate-900 text-white font-semibold shadow-xs"
-                : "bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200/40"
+                ? "bg-slate-900 text-white font-medium shadow-xs"
+                : "bg-slate-100/80 hover:bg-slate-200/70 text-slate-600 font-normal border border-transparent"
             }`}
           >
             ทั้งหมด
@@ -273,21 +351,24 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
               onTimeFilterChange("custom");
               setShowCustomInputs(!showCustomInputs);
             }}
-            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
+            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-xs transition-all cursor-pointer whitespace-nowrap ${
               timeFilter === "custom"
-                ? "bg-slate-900 text-white font-semibold shadow-xs"
-                : "bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200/40"
+                ? "bg-slate-900 text-white font-medium shadow-xs"
+                : "bg-slate-100/80 hover:bg-slate-200/70 text-slate-600 font-normal border border-transparent"
             }`}
           >
             <Calendar className="w-3.5 h-3.5" />
-            <span>เลือกช่วงเวลา</span>
+            <span>
+              {timeFilter === "custom" && customStartDate && customEndDate
+                ? `${customStartDate} ถึง ${customEndDate}`
+                : "เลือกช่วงเวลา"}
+            </span>
           </button>
         </div>
 
-        {/* Floating Custom Date Range Popup (Outside overflow-x-auto container!) */}
+        {/* Floating Custom Date Range Popup */}
         {timeFilter === "custom" && showCustomInputs && (
           <>
-            {/* Click outside backdrop overlay */}
             <div
               className="fixed inset-0 z-40"
               onClick={() => setShowCustomInputs(false)}
@@ -306,92 +387,148 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
         )}
       </div>
 
+      {/* ================= Summary Stats Strip (UX Enhancement) ================= */}
+      {filteredLogs.length > 0 && (
+        <div className="mb-3.5 bg-slate-50/80 rounded-xl px-3.5 py-2.5 border border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div className="flex items-center gap-1.5 text-slate-500 font-light">
+            <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+            <span>ช่วงเวลา:</span>
+            <strong className="font-medium text-slate-700">{filterLabel}</strong>
+            <span className="text-slate-300">•</span>
+            <span>{periodStats.count} ครั้งที่จด</span>
+          </div>
+
+          <div className="flex items-center gap-3 tabular-nums ml-auto">
+            <div className="flex items-center gap-1 text-slate-600">
+              <span className="text-slate-400 font-light">รวมหน่วย:</span>
+              <span className="font-semibold text-sky-600">
+                +{periodStats.units.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kWh
+              </span>
+            </div>
+            <span className="text-slate-200">|</span>
+            <div className="flex items-center gap-1 text-slate-600">
+              <span className="text-slate-400 font-light">รวมค่าไฟ:</span>
+              <span className="font-bold text-slate-900">
+                {periodStats.cost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= Content Area: Table / Cards / Empty State ================= */}
       <div
         className={`flex-1 flex flex-col transition-all duration-300 ease-out ${
           isFilterChanging
-            ? "opacity-20 scale-[0.99] blur-[0.5px]"
+            ? "opacity-25 scale-[0.99] blur-[0.5px]"
             : "opacity-100 scale-100 blur-none"
         }`}
       >
         {filteredLogs.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center py-12 text-slate-400 text-sm">
-            {logs.length === 0 ? (
-              <span>ยังไม่มีประวัติการบันทึก กดปุ่ม &quot;เพิ่มบันทึก&quot; เพื่อเริ่มต้น</span>
-            ) : (
-              <span>ไม่พบรายการบันทึกมิเตอร์ไฟในช่วงเวลาที่เลือก</span>
+          /* Modern Empty State */
+          <div className="flex-1 flex flex-col items-center justify-center py-12 px-4 text-center">
+            <div className="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 mb-3 shadow-2xs">
+              <Inbox className="w-6 h-6 stroke-[1.5]" />
+            </div>
+            <h3 className="text-sm font-semibold text-slate-800 mb-1">
+              {logs.length === 0 ? "ยังไม่มีประวัติการบันทึกมิเตอร์" : "ไม่พบรายการบันทึกในช่วงเวลานี้"}
+            </h3>
+            <p className="text-xs text-slate-400 font-light max-w-sm mb-4">
+              {logs.length === 0
+                ? "เริ่มต้นด้วยการแตะปุ่ม 'เพิ่มบันทึก' เพื่อจดเลขมิเตอร์ไฟฟ้ารายการแรก"
+                : "ลองปรับเปลี่ยนตัวกรองช่วงเวลา หรือกดปุ่ม 'เพิ่มบันทึก' เพื่อจดเลขมิเตอร์ใหม่"}
+            </p>
+            {logs.length > 0 && timeFilter !== "all" && (
+              <button
+                onClick={() => onTimeFilterChange("all")}
+                className="text-xs font-medium text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200/80 px-3.5 py-1.5 rounded-xl transition-colors cursor-pointer"
+              >
+                ดูรายการทั้งหมด ({logs.length} รายการ)
+              </button>
             )}
           </div>
         ) : (
           <>
-            {/* Desktop View: Fixed Header + Isolated Scrollable Table Body */}
-            <div className="hidden md:block overflow-hidden rounded-xl border border-slate-100">
+            {/* ================= Desktop View: Modern Unified Table ================= */}
+            <div className="hidden md:block overflow-hidden rounded-xl border border-slate-200/70 bg-white shadow-2xs">
               <table className="w-full text-left text-xs border-collapse table-fixed">
                 <thead>
-                  <tr className="bg-slate-50/80 text-slate-500 font-medium border-b border-slate-100">
-                    <th className="py-3 px-3 text-left w-[110px] whitespace-nowrap">วันที่บันทึก</th>
-                    <th className="py-3 px-3 text-right w-[100px] whitespace-nowrap">เลขมิเตอร์</th>
-                    <th className="py-3 px-3 text-right w-[100px] whitespace-nowrap">หน่วยที่ใช้</th>
-                    <th className="py-3 px-3 text-right w-[125px] whitespace-nowrap">ยอดค่าไฟ (บาท)</th>
-                    <th className="py-3 px-3 text-center w-[125px] whitespace-nowrap">หมายเหตุ</th>
-                    <th className="py-3 px-3 text-center w-[75px] whitespace-nowrap">จัดการ</th>
+                  <tr className="bg-slate-50/90 text-slate-500 font-semibold text-[11px] uppercase tracking-wider border-b border-slate-200/70 select-none">
+                    <th className="py-3 px-3.5 text-left w-[120px] whitespace-nowrap">วันที่บันทึก</th>
+                    <th className="py-3 px-3.5 text-right w-[110px] whitespace-nowrap">เลขมิเตอร์</th>
+                    <th className="py-3 px-3.5 text-right w-[120px] whitespace-nowrap">หน่วยที่ใช้</th>
+                    <th className="py-3 px-3.5 text-right w-[130px] whitespace-nowrap">ยอดค่าไฟ (บาท)</th>
+                    <th className="py-3 px-3.5 text-center w-[120px] whitespace-nowrap">สถานะ</th>
+                    <th className="py-3 px-3.5 text-center w-[85px] whitespace-nowrap">จัดการ</th>
                   </tr>
                 </thead>
               </table>
-              <div className="max-h-[380px] overflow-y-auto no-scrollbar">
+              <div className="max-h-[400px] overflow-y-auto no-scrollbar">
                 <table className="w-full text-left text-xs border-collapse table-fixed">
                   <tbody
                     key={timeFilter}
                     suppressHydrationWarning
-                    className="divide-y divide-slate-100/80 animate-in fade-in slide-in-from-bottom-1 duration-200 ease-out"
+                    className="divide-y divide-slate-100"
                   >
                     {displayLogs.map((log, index) => (
                       <tr
                         key={log.Log_ID}
-                        style={{ animationDelay: `${index * 35}ms` }}
-                        className="hover:bg-slate-50/60 transition-colors group animate-stagger"
+                        style={{ animationDelay: `${index * 30}ms` }}
+                        className="hover:bg-slate-50/70 transition-colors group animate-stagger"
                       >
-                        <td className="py-3 px-3 text-left font-medium text-slate-800 w-[110px] whitespace-nowrap">
+                        {/* 1. Date */}
+                        <td className="py-3 px-3.5 text-left font-medium text-slate-800 w-[120px] whitespace-nowrap tabular-nums">
                           {log.Record_Date}
                         </td>
-                        <td className="py-3 px-3 text-right font-mono font-medium text-slate-800 w-[100px] whitespace-nowrap">
+
+                        {/* 2. Meter Reading */}
+                        <td className="py-3 px-3.5 text-right font-medium text-slate-700 w-[110px] whitespace-nowrap tabular-nums">
                           {log.Meter_Reading.toLocaleString()}
                         </td>
-                        <td className="py-3 px-3 text-right w-[100px] whitespace-nowrap">
+
+                        {/* 3. Units Used */}
+                        <td className="py-3 px-3.5 text-right w-[120px] whitespace-nowrap tabular-nums">
                           {log.Is_New_Meter ? (
-                            <span className="text-slate-400 font-mono text-[11px]">0 kWh</span>
+                            <span className="text-slate-400 text-xs">0.0 kWh</span>
                           ) : (
-                            <span className="font-semibold text-blue-600 font-mono">
-                              {log.Units_Used} kWh
+                            <span className="font-semibold text-sky-600 bg-sky-50/70 px-2 py-0.5 rounded-lg text-xs">
+                              +{log.Units_Used.toFixed(1)} kWh
                             </span>
                           )}
                         </td>
-                        <td className="py-3 px-3 text-right w-[125px] whitespace-nowrap">
+
+                        {/* 4. Total Cost */}
+                        <td className="py-3 px-3.5 text-right w-[130px] whitespace-nowrap tabular-nums">
                           {log.Is_New_Meter || log.Total_Cost === 0 ? (
-                            <span className="text-slate-400 font-mono text-[11px]">
-                              <span className="text-slate-400 mr-0.5 font-normal">฿</span>0.00
-                            </span>
+                            <span className="text-slate-400 text-xs">0.00</span>
                           ) : (
-                            <span className="font-semibold text-slate-900 font-mono">
-                              <span className="text-slate-400 mr-0.5 font-normal">฿</span>
-                              {log.Total_Cost.toFixed(2)}
+                            <span className="font-semibold text-slate-900 text-xs sm:text-sm">
+                              {log.Total_Cost.toLocaleString(undefined, {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })}
                             </span>
                           )}
                         </td>
-                        <td className="py-3 px-3 text-center w-[125px] whitespace-nowrap">
+
+                        {/* 5. Status / Note */}
+                        <td className="py-3 px-3.5 text-center w-[120px] whitespace-nowrap">
                           {log.Is_New_Meter ? (
-                            <span className="inline-flex items-center justify-center text-[10px] font-medium text-blue-700 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-full whitespace-nowrap">
-                              <Info className="w-3 h-3 mr-1 text-blue-500 shrink-0" />
+                            <span className="inline-flex items-center justify-center gap-1 text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200/60 px-2.5 py-0.5 rounded-full whitespace-nowrap">
+                              <Sparkles className="w-3 h-3 text-amber-500 shrink-0" />
                               รอบมิเตอร์ใหม่
                             </span>
                           ) : (
                             <span className="text-slate-300 font-normal text-center inline-block">-</span>
                           )}
                         </td>
-                        <td className="py-3 px-3 text-center w-[75px] whitespace-nowrap">
+
+                        {/* 6. Actions */}
+                        <td className="py-3 px-3.5 text-center w-[85px] whitespace-nowrap">
                           <div className="flex items-center justify-center space-x-1">
                             <button
                               onClick={() => onOpenEditModal(log)}
-                              className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100/80 transition-colors cursor-pointer"
+                              className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
                               title="แก้ไขรายการ"
                             >
                               <Pencil className="w-3.5 h-3.5" />
@@ -412,39 +549,39 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
               </div>
             </div>
 
-            {/* Mobile View: Ultra-Compact Card UI */}
+            {/* ================= Mobile View: Refined Card List ================= */}
             <div
               key={timeFilter}
               suppressHydrationWarning
-              className="block md:hidden space-y-2 max-h-[380px] overflow-y-auto no-scrollbar"
+              className="block md:hidden space-y-2.5 max-h-[400px] overflow-y-auto no-scrollbar"
             >
               {displayLogs.map((log, index) => (
                 <div
                   key={log.Log_ID}
-                  style={{ animationDelay: `${index * 35}ms` }}
-                  className="bg-slate-50/70 rounded-xl p-3 border border-slate-100 space-y-1.5 relative animate-stagger hover:bg-slate-100/50 transition-colors"
+                  style={{ animationDelay: `${index * 30}ms` }}
+                  className="bg-slate-50/70 hover:bg-slate-100/70 rounded-xl p-3.5 border border-slate-100 space-y-2 relative animate-stagger transition-all"
                 >
-                  {/* Top Row: Date & Badge on Left | Total Cost on Right */}
+                  {/* Top Row: Date & Status Badge on Left | Total Cost on Right */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
-                      <span className="text-xs font-semibold text-slate-800">
+                      <span className="text-xs font-semibold text-slate-800 tabular-nums">
                         {log.Record_Date}
                       </span>
                       {log.Is_New_Meter && (
-                        <span className="inline-flex items-center text-[10px] font-medium text-blue-700 bg-blue-50 border border-blue-100 px-1.5 py-0.2 rounded-full">
-                          รอบมิเตอร์ใหม่
+                        <span className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-700 bg-amber-50 border border-amber-200/60 px-2 py-0.5 rounded-full">
+                          <Sparkles className="w-2.5 h-2.5 text-amber-500" />
+                          รอบใหม่
                         </span>
                       )}
                     </div>
 
-                    <div>
+                    <div className="tabular-nums">
                       {log.Is_New_Meter || log.Total_Cost === 0 ? (
-                        <span className="font-normal text-slate-400 text-xs font-mono">
-                          <span className="text-slate-400 mr-0.5">฿</span>0.00
+                        <span className="font-normal text-slate-400 text-xs">
+                          0.00
                         </span>
                       ) : (
-                        <span className="font-bold text-slate-900 text-sm font-mono">
-                          <span className="text-slate-400 font-normal mr-0.5">฿</span>
+                        <span className="font-bold text-slate-900 text-sm">
                           {log.Total_Cost.toLocaleString(undefined, {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2,
@@ -454,35 +591,35 @@ export const DataHistoryTable: React.FC<DataHistoryTableProps> = memo(({
                     </div>
                   </div>
 
-                  {/* Second Row: Value-First Specs + Icon-Only Action Buttons */}
-                  <div className="flex items-center justify-between pt-1.5 border-t border-slate-200/50">
-                    {/* Left: Value-First Specs (19 kWh • มิเตอร์ 1,982) */}
-                    <div className="flex items-center space-x-1.5 text-xs text-slate-500">
+                  {/* Second Row: Units & Meter Specs + Action Buttons */}
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-200/60">
+                    {/* Left: Value-First Units & Meter */}
+                    <div className="flex items-center space-x-2 text-xs text-slate-500 tabular-nums">
                       {log.Is_New_Meter ? (
-                        <span className="font-normal text-slate-400 font-mono text-[11px]">0 kWh</span>
+                        <span className="font-normal text-slate-400 text-xs">0.0 kWh</span>
                       ) : (
-                        <span className="font-semibold text-blue-600 font-mono text-xs">
-                          {log.Units_Used} kWh
+                        <span className="font-semibold text-sky-600 bg-sky-50 px-1.5 py-0.5 rounded-md text-xs">
+                          +{log.Units_Used.toFixed(1)} kWh
                         </span>
                       )}
                       <span className="text-slate-300">•</span>
-                      <span className="text-slate-400 font-mono text-[11px]">
-                        มิเตอร์ {log.Meter_Reading.toLocaleString()}
+                      <span className="text-slate-500 text-xs font-light">
+                        มิเตอร์ <strong className="font-medium text-slate-700">{log.Meter_Reading.toLocaleString()}</strong>
                       </span>
                     </div>
 
-                    {/* Right: Icon-Only Action Buttons */}
+                    {/* Right: Action Buttons with comfortable touch target */}
                     <div className="flex items-center space-x-1">
                       <button
                         onClick={() => onOpenEditModal(log)}
-                        className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors cursor-pointer"
+                        className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/70 transition-colors cursor-pointer"
                         title="แก้ไข"
                       >
                         <Pencil className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => onConfirmDelete(log)}
-                        className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                        className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                         title="ลบ"
                       >
                         <Trash2 className="w-3.5 h-3.5" />

@@ -142,84 +142,78 @@ export default function KhafaiDashboard() {
     }
   }, [isAuthLoading, currentUserId, currentEmail]);
 
-  // Dynamically Filtered Logs based on active timeFilter
+  // Dynamically Filtered Logs based on active timeFilter (Timezone-safe string comparisons)
   const filteredLogs = useMemo(() => {
     const now = new Date();
 
     if (timeFilter === "all") return logs;
 
     if (timeFilter === "this_month") {
-      const currentYear = now.getFullYear();
-      const currentMonth = now.getMonth();
-      return logs.filter((log) => {
-        const d = new Date(log.Record_Date);
-        return (
-          !isNaN(d.getTime()) &&
-          d.getFullYear() === currentYear &&
-          d.getMonth() === currentMonth
-        );
-      });
+      const curYear = now.getFullYear();
+      const curMonth = String(now.getMonth() + 1).padStart(2, "0");
+      const monthPrefix = `${curYear}-${curMonth}`;
+      return logs.filter((log) => (log.Record_Date || "").startsWith(monthPrefix));
     }
 
     if (timeFilter === "last_month") {
       const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const targetYear = prevDate.getFullYear();
-      const targetMonth = prevDate.getMonth();
-      return logs.filter((log) => {
-        const d = new Date(log.Record_Date);
-        return (
-          !isNaN(d.getTime()) &&
-          d.getFullYear() === targetYear &&
-          d.getMonth() === targetMonth
-        );
-      });
+      const prevYear = prevDate.getFullYear();
+      const prevMonth = String(prevDate.getMonth() + 1).padStart(2, "0");
+      const prevMonthPrefix = `${prevYear}-${prevMonth}`;
+      return logs.filter((log) => (log.Record_Date || "").startsWith(prevMonthPrefix));
     }
 
     if (timeFilter === "this_week") {
       const d = new Date(now);
       const day = d.getDay();
       const diffToMonday = d.getDate() - day + (day === 0 ? -6 : 1);
-      const monday = new Date(d.setDate(diffToMonday));
-      monday.setHours(0, 0, 0, 0);
+      const monday = new Date(now.getFullYear(), now.getMonth(), diffToMonday);
+      const mondayStr = `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, "0")}-${String(monday.getDate()).padStart(2, "0")}`;
+      const nowStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
       return logs.filter((log) => {
-        const logDate = new Date(log.Record_Date);
-        logDate.setHours(0, 0, 0, 0);
-        return !isNaN(logDate.getTime()) && logDate >= monday && logDate <= now;
+        const rDate = log.Record_Date || "";
+        return rDate >= mondayStr && rDate <= nowStr;
       });
     }
 
     if (timeFilter === "this_year") {
-      const currentYear = now.getFullYear();
-      return logs.filter((log) => {
-        const d = new Date(log.Record_Date);
-        return !isNaN(d.getTime()) && d.getFullYear() === currentYear;
-      });
+      const curYearStr = String(now.getFullYear());
+      return logs.filter((log) => (log.Record_Date || "").startsWith(curYearStr));
     }
 
     if (timeFilter === "custom" && customStartDate && customEndDate) {
-      const start = new Date(customStartDate);
-      start.setHours(0, 0, 0, 0);
-      const end = new Date(customEndDate);
-      end.setHours(23, 59, 59, 999);
-
       return logs.filter((log) => {
-        const d = new Date(log.Record_Date);
-        return !isNaN(d.getTime()) && d >= start && d <= end;
+        const rDate = log.Record_Date || "";
+        return rDate >= customStartDate && rDate <= customEndDate;
       });
     }
 
     return logs;
   }, [logs, timeFilter, customStartDate, customEndDate]);
 
-  // Derived metrics with 0ms memoization
+  // Current month logs specifically for Home page (independent of timeFilter)
+  const currentMonthLogs = useMemo(() => {
+    const now = new Date();
+    const curYear = now.getFullYear();
+    const curMonth = String(now.getMonth() + 1).padStart(2, "0");
+    const monthPrefix = `${curYear}-${curMonth}`;
+    return logs.filter((log) => (log.Record_Date || "").startsWith(monthPrefix));
+  }, [logs]);
+
+  // Current month summary strictly for Home page
+  const homeSummary: SummaryData = useMemo(() => {
+    return calculateSummaryData(currentMonthLogs, user.Current_Rate_Per_Unit, logs, "this_month");
+  }, [currentMonthLogs, user.Current_Rate_Per_Unit, logs]);
+
+  // Derived metrics for Dashboard & History with 0ms memoization
   const summary: SummaryData = useMemo(() => {
     return calculateSummaryData(filteredLogs, user.Current_Rate_Per_Unit, logs, timeFilter);
   }, [filteredLogs, user.Current_Rate_Per_Unit, logs, timeFilter]);
 
   const monthlyChart: MonthlyChartData[] = useMemo(() => {
-    return calculateMonthlyChartData(filteredLogs);
-  }, [filteredLogs]);
+    return calculateMonthlyChartData(logs);
+  }, [logs]);
 
   const addToast = (type: "warning" | "success" | "error", message: string, title?: string) => {
     const id = `toast-${Date.now()}-${Math.random()}`;
@@ -299,13 +293,13 @@ export default function KhafaiDashboard() {
             hasCompletedOnboarding: true,
           };
           
-          // Safety Guard: If GAS was not connected, do NOT overwrite non-empty local logs with empty array!
+          // Safety Guard: If incoming logs is empty but we have existing local cache, do NOT overwrite with empty array!
           const incomingLogs = data.logs || [];
           const currentLocalCache = getLocalCache(userId);
           const hasExistingLocalLogs = currentLocalCache && currentLocalCache.logs && currentLocalCache.logs.length > 0;
 
           let finalLogs = incomingLogs;
-          if (!data.isGasConnected && incomingLogs.length === 0 && hasExistingLocalLogs) {
+          if (incomingLogs.length === 0 && hasExistingLocalLogs) {
             finalLogs = currentLocalCache.logs;
           }
 
@@ -549,6 +543,25 @@ export default function KhafaiDashboard() {
     }
   };
 
+  const headerCycleText = useMemo(() => {
+    const thaiShortMonths = [
+      "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.",
+      "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."
+    ];
+    const now = new Date();
+    if (timeFilter === "last_month") {
+      const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const prevLastDay = new Date(prevDate.getFullYear(), prevDate.getMonth() + 1, 0).getDate();
+      return `รอบ 1-${prevLastDay} ${thaiShortMonths[prevDate.getMonth()]}`;
+    }
+    if (timeFilter === "this_week") return "สัปดาห์นี้";
+    if (timeFilter === "this_year") return `ปี ${now.getFullYear() + 543}`;
+    if (timeFilter === "custom" && customStartDate && customEndDate) return `${customStartDate} ถึง ${customEndDate}`;
+    if (timeFilter === "all") return "ข้อมูลทั้งหมด";
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    return `รอบ 1-${lastDay} ${thaiShortMonths[now.getMonth()]}`;
+  }, [timeFilter, customStartDate, customEndDate]);
+
   if (!isMounted) {
     return <FullPageSkeleton />;
   }
@@ -570,6 +583,7 @@ export default function KhafaiDashboard() {
           onOpenMenu={() => setIsDrawerOpen(true)}
           isLoading={isLoading}
           activeNavTab={activeView}
+          cycleText={headerCycleText}
           onSelectNavTab={(tab) => {
             if (tab === "settings") {
               setIsTariffModalOpen(true);
@@ -613,13 +627,13 @@ export default function KhafaiDashboard() {
                 className="w-full h-full flex flex-col justify-center items-center"
               >
                 <GlanceableHeroDashboard
-                  summary={summary}
+                  summary={homeSummary}
                   user={user}
                   logs={logs}
                   onOpenQuickRecord={() => setIsQuickRecordOpen(true)}
                   onOpenMenu={() => setIsDrawerOpen(true)}
                   onNavigate={(view) => setActiveView(view)}
-                  onOpenHistory={() => setActiveView("history")}
+                  onOpenHistory={() => setActiveView("dashboard")}
                   onOpenTariffModal={() => setIsTariffModalOpen(true)}
                   onOpenGoogleLoginModal={() => setIsGoogleLoginOpen(true)}
                 />
@@ -633,21 +647,26 @@ export default function KhafaiDashboard() {
                 transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
                 className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-6 pb-8"
               >
-                {/* Active View Content: Dashboard (Dribbble Clean Specification) or History */}
-                {activeView === "history" ? (
-                  <div className="space-y-6">
-                    <div className="flex items-center justify-between bg-white rounded-2xl p-3 border border-slate-100 shadow-xs mb-4">
-                      <span className="text-sm font-bold text-slate-800">
-                        ประวัติบันทึกการใช้ไฟฟ้า (History & Logs)
-                      </span>
-                      <button
-                        onClick={() => setActiveView("dashboard")}
-                        className="text-xs font-semibold text-[#8B70F8] hover:underline cursor-pointer"
-                      >
-                        ← กลับไปแดชบอร์ด
-                      </button>
-                    </div>
-
+                {/* VoltPulse Clean Dashboard with History & Logs embedded */}
+                <VoltPulseDashboard
+                  summary={summary}
+                  user={user}
+                  monthlyChartData={monthlyChart}
+                  logs={logs}
+                  filteredLogs={filteredLogs}
+                  timeFilter={timeFilter}
+                  customStartDate={customStartDate}
+                  customEndDate={customEndDate}
+                  onOpenTariffModal={() => setIsTariffModalOpen(true)}
+                  onOpenAddModal={() => {
+                    setEditingLog(null);
+                    setIsLogFormOpen(true);
+                  }}
+                  onOpenEditModal={(log) => {
+                    setEditingLog(log);
+                    setIsLogFormOpen(true);
+                  }}
+                  historyTableSlot={
                     <DataHistoryTable
                       logs={logs}
                       filteredLogs={filteredLogs}
@@ -667,37 +686,27 @@ export default function KhafaiDashboard() {
                         setIsLogFormOpen(true);
                       }}
                       onConfirmDelete={handleOpenDeleteModal}
-                      onExportCSV={async (customLogs) => {
+                      onExportCSV={async (customLogs, customRange) => {
                         const { exportToCSV } = await import("@/lib/pdf-export");
-                        exportToCSV(customLogs || filteredLogs, user, timeFilter);
+                        const activeRange =
+                          customRange ||
+                          (timeFilter === "custom" && (customStartDate || customEndDate)
+                            ? { start: customStartDate, end: customEndDate }
+                            : undefined);
+                        exportToCSV(customLogs || filteredLogs, user, timeFilter, activeRange);
                       }}
-                      onExportPDF={async (customLogs) => {
+                      onExportPDF={async (customLogs, customRange) => {
                         const { exportToPDF } = await import("@/lib/pdf-export");
-                        exportToPDF(customLogs || filteredLogs, user, timeFilter);
+                        const activeRange =
+                          customRange ||
+                          (timeFilter === "custom" && (customStartDate || customEndDate)
+                            ? { start: customStartDate, end: customEndDate }
+                            : undefined);
+                        exportToPDF(customLogs || filteredLogs, user, timeFilter, activeRange);
                       }}
                     />
-                  </div>
-                ) : (
-                  <div>
-                    {/* VoltPulse Clean Dashboard matching user specification */}
-                    <VoltPulseDashboard
-                      summary={summary}
-                      user={user}
-                      monthlyChartData={monthlyChart}
-                      logs={logs}
-                      onOpenTariffModal={() => setIsTariffModalOpen(true)}
-                      onOpenAddModal={() => {
-                        setEditingLog(null);
-                        setIsLogFormOpen(true);
-                      }}
-                      onOpenEditModal={(log) => {
-                        setEditingLog(log);
-                        setIsLogFormOpen(true);
-                      }}
-                      onOpenHistory={() => setActiveView("history")}
-                    />
-                  </div>
-                )}
+                  }
+                />
               </motion.div>
             )}
           </AnimatePresence>

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { resetUserRateLimit } from "@/lib/rate-limiter";
 import { resetUserDatabase } from "@/lib/database";
 import { verifyServerAuth, verifyCsrfOrigin } from "@/lib/auth-server";
+import { invalidateServerCache } from "@/lib/server-cache";
 
 export async function POST(req: NextRequest) {
   if (!verifyCsrfOrigin(req)) {
@@ -27,6 +28,7 @@ export async function POST(req: NextRequest) {
 
     if (body.resetData) {
       resetUserDatabase(userId);
+      invalidateServerCache(`user_data_${userId}`);
     }
 
     return NextResponse.json({

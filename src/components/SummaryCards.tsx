@@ -2,7 +2,7 @@
 
 import React, { memo, useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
-import { TrendingDown, ArrowDownRight, Zap, Banknote, Gauge } from "lucide-react";
+import { TrendingDown, TrendingUp, Minus, ArrowDownRight, Zap, Banknote, Gauge } from "lucide-react";
 import { SummaryData } from "@/types";
 
 interface SummaryCardsProps {
@@ -62,11 +62,10 @@ function AnimatedCounter({
 }
 
 export const SummaryCards: React.FC<SummaryCardsProps> = memo(({ summary }) => {
-  // Calculate savings metric (or default demonstration if new)
   const percentChange = summary.unitsPercentChange;
-  // If user used less, e.g. -12%, or calculate saving percentage
   const isSaving = percentChange !== null && percentChange < 0;
-  const savingAmountPct = percentChange !== null ? Math.abs(percentChange) : 12;
+  const isIncreasing = percentChange !== null && percentChange > 0;
+  const isSame = percentChange !== null && percentChange === 0;
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -168,27 +167,66 @@ export const SummaryCards: React.FC<SummaryCardsProps> = memo(({ summary }) => {
       >
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-medium text-slate-500">
-            สรุปการประหยัดพลังงาน
+            สรุปการใช้พลังงาน
           </span>
-          <div className="w-8 h-8 rounded-full bg-emerald-100/80 flex items-center justify-center text-[#2ECC71]">
-            <TrendingDown className="w-4 h-4" />
+          <div
+            className={`w-8 h-8 rounded-full flex items-center justify-center ${
+              isSaving
+                ? "bg-emerald-100/80 text-[#2ECC71]"
+                : isIncreasing
+                ? "bg-rose-100/80 text-rose-500"
+                : "bg-slate-100 text-slate-400"
+            }`}
+          >
+            {isSaving ? (
+              <TrendingDown className="w-4 h-4" />
+            ) : isIncreasing ? (
+              <TrendingUp className="w-4 h-4" />
+            ) : (
+              <Minus className="w-4 h-4" />
+            )}
           </div>
         </div>
 
         <div>
           <div className="flex items-center space-x-3 my-1">
-            {/* Green Circle with Down Arrow */}
-            <div className="w-12 h-12 rounded-full bg-[#2ECC71]/15 border border-[#2ECC71]/30 flex items-center justify-center text-[#2ECC71] shrink-0">
-              <span className="text-xl font-bold">↓</span>
+            <div
+              className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 border ${
+                isSaving
+                  ? "bg-[#2ECC71]/15 border-[#2ECC71]/30 text-[#2ECC71]"
+                  : isIncreasing
+                  ? "bg-rose-500/15 border-rose-500/30 text-rose-600"
+                  : "bg-slate-100 border-slate-200 text-slate-400"
+              }`}
+            >
+              <span className="text-xl font-bold">
+                {isSaving ? "↓" : isIncreasing ? "↑" : "-"}
+              </span>
             </div>
             <div>
               <div className="flex items-baseline space-x-1">
-                <span className="text-2xl font-black text-[#2ECC71] font-mono">
-                  {isSaving ? `${savingAmountPct}%` : `${savingAmountPct}%`}
+                <span
+                  className={`text-2xl font-black font-mono ${
+                    isSaving
+                      ? "text-[#2ECC71]"
+                      : isIncreasing
+                      ? "text-rose-600"
+                      : "text-slate-400"
+                  }`}
+                >
+                  {percentChange !== null
+                    ? `${isIncreasing ? "+" : ""}${percentChange}%`
+                    : "-"}
                 </span>
               </div>
               <span className="text-xs font-medium text-slate-700">
-                {isSaving ? "ใช้งานลดลงอย่างมีประสิทธิภาพ" : "ใช้งานน้อยลง"}
+                {isSaving
+                  ? "ใช้งานลดลงอย่างมีประสิทธิภาพ"
+                  : isIncreasing
+                  ? "ใช้งานเพิ่มขึ้นจากรอบก่อน"
+                  : isSame
+                  ? "ใช้งานเท่าเดิม"
+                  : "ยังไม่มีข้อมูลเปรียบเทียบ"}
               </span>
             </div>
           </div>

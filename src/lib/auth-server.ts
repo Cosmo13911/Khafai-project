@@ -82,6 +82,14 @@ export async function verifyServerAuth(req: NextRequest): Promise<VerifiedAuthUs
 
   if (clientUserId || clientEmail) {
     const isDemo = clientEmail.includes("demo") || clientUserId.includes("demo");
+    const isNumericGoogleSub = /^\d{15,}$/.test(clientUserId);
+
+    // Security Guard: Prevent impersonating numeric Google Sub IDs without verified OAuth token
+    if (isNumericGoogleSub && !token) {
+      console.warn("[Auth Security] Rejected unverified numeric Google Sub ID via plain headers:", clientUserId);
+      return null;
+    }
+
     return {
       userId: clientUserId || clientEmail,
       email: clientEmail || clientUserId,

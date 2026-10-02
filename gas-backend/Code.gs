@@ -18,12 +18,15 @@ function doGet(e) { return handleRequest(e, "GET"); }
 function doPost(e) { return handleRequest(e, "POST"); }
 
 function handleRequest(e, httpMethod) {
-  // Multi-Device Concurrency Handling ป้องกันข้อมูลทับซ้อนด้วย LockService
-  const lock = LockService.getScriptLock();
-  try {
-    lock.waitLock(10000);
-  } catch (err) {
-    return createJsonResponse({ success: false, error: "LOCK_TIMEOUT", message: "ระบบกำลังประมวลผลคำขออื่นอยู่ กรุณาลองใหม่อีกครั้ง" }, 429);
+  // Multi-Device Concurrency Handling: Lock only for mutating requests (POST)
+  const isMutating = httpMethod === "POST";
+  const lock = isMutating ? LockService.getScriptLock() : null;
+  if (lock) {
+    try {
+      lock.waitLock(10000);
+    } catch (err) {
+      return createJsonResponse({ success: false, error: "LOCK_TIMEOUT", message: "ระบบกำลังประมวลผลคำขออื่นอยู่ กรุณาลองใหม่อีกครั้ง" }, 429);
+    }
   }
 
   try {
@@ -64,7 +67,9 @@ function handleRequest(e, httpMethod) {
   } catch (error) {
     return createJsonResponse({ success: false, error: "SERVER_ERROR", message: error.toString() });
   } finally {
-    lock.releaseLock();
+    if (lock) {
+      try { lock.releaseLock(); } catch (_) {}
+    }
   }
 }
 
@@ -110,18 +115,31 @@ function handleUpdateUser(userId, params) {
 function findOrCreateUser(userId, email) {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_USERS);
   const data = sheet.getDataRange().getValues();
+  const cleanEmail = (email || "").trim().toLowerCase();
+
+  // 1. Search by User_ID
   for (let i = 1; i < data.length; i++) {
     if (String(data[i][0]) === String(userId)) {
       let currentEmail = data[i][1];
       // อัปเดตอีเมลจริงทับอีเมลเดิมทันทีหากเป็นค่าว่างหรือ @khafai.app
-      if (email && (!currentEmail || String(currentEmail).includes("@khafai.app"))) {
-        sheet.getRange(i + 1, 2).setValue(email);
-        currentEmail = email;
+      if (cleanEmail && (!currentEmail || String(currentEmail).includes("@khafai.app"))) {
+        sheet.getRange(i + 1, 2).setValue(cleanEmail);
+        currentEmail = cleanEmail;
       }
       return { User_ID: String(data[i][0]), Email: currentEmail, Current_Rate_Per_Unit: parseFloat(data[i][2]) || DEFAULT_RATE, Created_At: data[i][3] };
     }
   }
-  const newUser = { User_ID: String(userId), Email: email || "", Current_Rate_Per_Unit: DEFAULT_RATE, Created_At: new Date().toISOString() };
+
+  // 2. Fallback search by Email (prevents account fragmentation across different devices or login methods)
+  if (cleanEmail && !cleanEmail.endsWith("@khafai.app")) {
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][1]).trim().toLowerCase() === cleanEmail) {
+        return { User_ID: String(data[i][0]), Email: String(data[i][1]), Current_Rate_Per_Unit: parseFloat(data[i][2]) || DEFAULT_RATE, Created_At: data[i][3] };
+      }
+    }
+  }
+
+  const newUser = { User_ID: String(userId), Email: cleanEmail || "", Current_Rate_Per_Unit: DEFAULT_RATE, Created_At: new Date().toISOString() };
   sheet.appendRow([newUser.User_ID, newUser.Email, newUser.Current_Rate_Per_Unit, newUser.Created_At]);
   return newUser;
 }
@@ -247,7 +265,13 @@ function recalculateLogsArray(logs, currentRate) {
     } else {
       const prevLog = sorted[index - 1];
       log.Units_Used = Math.max(0, log.Meter_Reading - prevLog.Meter_Reading);
-      log.Total_Cost = Math.round(log.Units_Used * currentRate * 100) / 100;
+      // Preserve log.Total_Cost if already present (> 0) from database / Google Sheets
+      const existingCost = parseFloat(log.Total_Cost);
+      if (!isNaN(existingCost) && existingCost > 0) {
+        log.Total_Cost = Math.round(existingCost * 100) / 100;
+      } else {
+        log.Total_Cost = Math.round(log.Units_Used * currentRate * 100) / 100;
+      }
     }
     return log;
   });
@@ -258,16 +282,24 @@ function recalculateUserLogs(userId, currentRate) {
   const recalculated = recalculateLogsArray(logs, currentRate);
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_METER_LOGS);
   const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) return recalculated;
 
+  let hasChanges = false;
   for (let i = 1; i < data.length; i++) {
     if (String(data[i][1]) === String(userId)) {
       const currentLogId = data[i][0];
       const match = recalculated.find(function(l) { return l.Log_ID === currentLogId; });
       if (match) {
-        sheet.getRange(i + 1, 5).setValue(match.Units_Used);
-        sheet.getRange(i + 1, 6).setValue(match.Total_Cost);
+        data[i][4] = match.Units_Used;
+        data[i][5] = match.Total_Cost;
+        hasChanges = true;
       }
     }
+  }
+
+  // Batch write all changes in a single operation (< 200ms) to avoid 15s timeout
+  if (hasChanges) {
+    sheet.getRange(1, 1, data.length, data[0].length).setValues(data);
   }
   return recalculated;
 }
@@ -289,7 +321,8 @@ function validateRange(logs, proposedReading, proposedDate, isNewMeter, excludeL
   if (!isNewMeter && prevLog && proposedReading < prevLog.Meter_Reading) {
     return { isValid: false, errorMessage: "ตัวเลขต้องไม่น้อยกว่าค่าก่อนหน้า (" + prevLog.Meter_Reading + ")" };
   }
-  if (nextLog && proposedReading > nextLog.Meter_Reading) {
+  // If nextLog exists and is NOT a new meter, check maxAllowed
+  if (nextLog && !nextLog.Is_New_Meter && proposedReading > nextLog.Meter_Reading) {
     return { isValid: false, errorMessage: "ตัวเลขต้องไม่เกินค่าถัดไป (" + nextLog.Meter_Reading + ")" };
   }
   return { isValid: true };
@@ -301,7 +334,7 @@ function checkDeleteProtectionRule(logs, logIdToDelete) {
   if (targetIndex === -1) return { canDelete: true };
 
   const targetLog = sorted[targetIndex];
-  if (targetLog.Is_New_Meter) {
+  if (targetLog.Is_New_Meter || targetIndex === 0) {
     const hasChildInCycle = (targetIndex < sorted.length - 1) && !sorted[targetIndex + 1].Is_New_Meter;
     if (hasChildInCycle) {
       return { canDelete: false, message: "ไม่สามารถลบจุดเริ่มต้นของรอบมิเตอร์ได้ กรุณาลบรายการถัดไปในรอบเดียวกันออกก่อน" };
@@ -325,8 +358,12 @@ function ensureSheetsExist() {
 function formatDate(dateVal) {
   if (!dateVal) return "";
   if (typeof dateVal === "string") return dateVal.substring(0, 10);
-  const d = new Date(dateVal);
-  return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2);
+  try {
+    return Utilities.formatDate(new Date(dateVal), SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone(), "yyyy-MM-dd");
+  } catch (_) {
+    const d = new Date(dateVal);
+    return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2);
+  }
 }
 
 function createJsonResponse(data, statusCode) {

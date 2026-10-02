@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Zap,
   TrendingDown,
@@ -26,16 +26,22 @@ import {
   CartesianGrid,
 } from "recharts";
 import { SummaryData, MonthlyChartData, UserProfile, MeterLog } from "@/types";
+import { TimeFilterMode } from "./DataHistoryTable";
 
 interface VoltPulseDashboardProps {
   summary: SummaryData;
   user: UserProfile;
   monthlyChartData?: MonthlyChartData[];
   logs?: MeterLog[];
+  filteredLogs?: MeterLog[];
+  timeFilter?: TimeFilterMode;
+  customStartDate?: string;
+  customEndDate?: string;
   onOpenTariffModal?: () => void;
   onOpenAddModal?: () => void;
   onOpenEditModal?: (log: MeterLog) => void;
   onOpenHistory?: () => void;
+  historyTableSlot?: React.ReactNode;
 }
 
 export const VoltPulseDashboard: React.FC<VoltPulseDashboardProps> = ({
@@ -43,33 +49,209 @@ export const VoltPulseDashboard: React.FC<VoltPulseDashboardProps> = ({
   user,
   monthlyChartData = [],
   logs = [],
+  filteredLogs = [],
+  timeFilter = "this_month",
+  customStartDate = "",
+  customEndDate = "",
   onOpenTariffModal,
   onOpenAddModal,
   onOpenEditModal,
   onOpenHistory,
+  historyTableSlot,
 }) => {
-  // Billing cycle text
-  const billCycleText = useMemo(() => {
-    const thaiMonths = [
-      "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.",
-      "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."
-    ];
-    const now = new Date();
-    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-    return `รอบ 1-${lastDay} ${thaiMonths[now.getMonth()]}`;
-  }, []);
+  const activeFilter = timeFilter || "this_month";
+  const now = new Date();
+  const curYear = now.getFullYear();
+  const curMonth = now.getMonth(); // 0-indexed
 
-  // Month and Year in Thai format (e.g. กันยายน 69)
-  const currentMonthYearText = useMemo(() => {
-    const thaiFullMonths = [
-      "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
-      "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"
-    ];
-    const now = new Date();
-    const month = thaiFullMonths[now.getMonth()];
-    const thaiYearShort = ((now.getFullYear() + 543) % 100).toString().padStart(2, "0");
-    return `${month} ${thaiYearShort}`;
-  }, []);
+  const thaiFullMonths = [
+    "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
+    "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"
+  ];
+  const thaiShortMonths = [
+    "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.",
+    "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."
+  ];
+
+  // Previous month details
+  const prevMonthDate = new Date(curYear, curMonth - 1, 1);
+  const prevMonthIndex = prevMonthDate.getMonth();
+  const prevYear = prevMonthDate.getFullYear();
+  const prevLastDay = new Date(prevYear, prevMonthIndex + 1, 0).getDate();
+  const prevMonthName = thaiFullMonths[prevMonthIndex];
+  const prevThaiYearShort = ((prevYear + 543) % 100).toString().padStart(2, "0");
+
+  // Current month details
+  const currentMonthName = thaiFullMonths[curMonth];
+  const currentThaiYearShort = ((curYear + 543) % 100).toString().padStart(2, "0");
+  const daysInCurrentMonth = new Date(curYear, curMonth + 1, 0).getDate();
+  const currentMonthDaysPassed = Math.max(1, now.getDate());
+
+  // Helper for custom date format in Thai (e.g. 1 ก.ย. 69)
+  const formatThaiDateShort = (dateStr: string) => {
+    if (!dateStr) return "";
+    const parts = dateStr.split("-");
+    if (parts.length !== 3) return dateStr;
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10) - 1;
+    const d = parseInt(parts[2], 10);
+    const yShort = ((y + 543) % 100).toString().padStart(2, "0");
+    return `${d} ${thaiShortMonths[m] || ""} ${yShort}`;
+  };
+
+  // Contextual Dashboard Titles, Labels, and Scope
+  const filterContext = useMemo(() => {
+    switch (activeFilter) {
+      case "last_month": {
+        const daysCount = prevLastDay;
+        return {
+          title: `ภาพรวมการใช้ไฟฟ้า ${prevMonthName} ${prevThaiYearShort}`,
+          subtitle: `สรุปข้อมูลการใช้ไฟฟ้าย้อนหลังประจำเดือน${prevMonthName} ${prevYear + 543} (ครบ ${daysCount} วัน)`,
+          badgeText: `รอบ 1-${prevLastDay} ${thaiShortMonths[prevMonthIndex]}`,
+          card1Label: `ยอดค่าไฟเดือน${prevMonthName}`,
+          card1SubLabel: "ยอดรวมสิ้นสุดรอบ",
+          card2Label: `หน่วยไฟฟ้ารวม (${thaiShortMonths[prevMonthIndex]})`,
+          card3Label: "เฉลี่ยต่อวัน (ทั้งเดือน)",
+          card3SubLabel: `เฉลี่ยครบทั้ง ${daysCount} วัน`,
+          daysForAverage: daysCount,
+          isProjectionApplicable: false,
+          summaryCardTitle: "สรุปยอดจริงสิ้นเดือน",
+          summaryCardTag: "รอบสมบูรณ์ 100%",
+          summaryHighlightLabel: `ยอดค่าไฟสุทธิเดือน${prevMonthName}`,
+          summaryStatusText: `สิ้นสุดรอบบิลแล้ว (${daysCount} วันเต็ม)`,
+          summaryTip: `ยอดการใช้ไฟฟ้าจริงประจำเดือน${prevMonthName} รวมบันทึก ${filteredLogs.length} รายการ`,
+        };
+      }
+      case "this_week": {
+        const day = now.getDay();
+        const daysPassedInWeek = Math.max(1, day === 0 ? 7 : day);
+        return {
+          title: "ภาพรวมการใช้ไฟฟ้า สัปดาห์นี้",
+          subtitle: `สรุปข้อมูลการใช้ไฟฟ้าระหว่างสัปดาห์ปัจจุบัน (${daysPassedInWeek} วันที่ผ่านมา)`,
+          badgeText: "สัปดาห์นี้",
+          card1Label: "ยอดค่าไฟสัปดาห์นี้",
+          card1SubLabel: "ช่วง 7 วันล่าสุด",
+          card2Label: "หน่วยไฟฟ้าสัปดาห์นี้",
+          card3Label: "เฉลี่ยต่อวัน (สัปดาห์นี้)",
+          card3SubLabel: `เฉลี่ย ${daysPassedInWeek} วันของสัปดาห์`,
+          daysForAverage: daysPassedInWeek,
+          isProjectionApplicable: false,
+          summaryCardTitle: "สรุปยอดรวมสัปดาห์นี้",
+          summaryCardTag: "สัปดาห์ปัจจุบัน",
+          summaryHighlightLabel: "ยอดค่าไฟรวมสัปดาห์นี้",
+          summaryStatusText: `บันทึกระหว่างสัปดาห์ (${daysPassedInWeek} วัน)`,
+          summaryTip: `สรุปข้อมูลการใช้ไฟฟ้าระหว่างสัปดาห์ รวมบันทึก ${filteredLogs.length} รายการ`,
+        };
+      }
+      case "this_year": {
+        const startOfYear = new Date(curYear, 0, 1);
+        const dayOfYear = Math.max(1, Math.floor((now.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+        return {
+          title: `ภาพรวมการใช้ไฟฟ้า ปี ${curYear + 543}`,
+          subtitle: `สรุปข้อมูลการใช้ไฟฟ้าสะสมตั้งแต่ต้นปี ${curYear + 543}`,
+          badgeText: `ประจำปี ${curYear + 543}`,
+          card1Label: "ยอดค่าไฟสะสมปีนี้",
+          card1SubLabel: "สะสมตั้งแต่ 1 ม.ค.",
+          card2Label: "หน่วยไฟฟ้ารวมทั้งปี",
+          card3Label: "เฉลี่ยต่อวัน (ปีนี้)",
+          card3SubLabel: `เฉลี่ย ${dayOfYear} วันของปี`,
+          daysForAverage: dayOfYear,
+          isProjectionApplicable: false,
+          summaryCardTitle: "สรุปยอดรวมประจำปี",
+          summaryCardTag: `ปี ${curYear + 543}`,
+          summaryHighlightLabel: `ยอดค่าไฟสะสมปี ${curYear + 543}`,
+          summaryStatusText: `ข้อมูลสะสมประจำปี (${curMonth + 1} เดือน)`,
+          summaryTip: `สถิติภาพรวมประจำปี ${curYear + 543} รวมบันทึก ${filteredLogs.length} รายการ`,
+        };
+      }
+      case "custom": {
+        const formattedStart = formatThaiDateShort(customStartDate || "");
+        const formattedEnd = formatThaiDateShort(customEndDate || "");
+        const rangeText = formattedStart && formattedEnd ? `${formattedStart} - ${formattedEnd}` : "ช่วงเวลาที่เลือก";
+
+        let daysCustom = 1;
+        if (customStartDate && customEndDate) {
+          const s = new Date(customStartDate).getTime();
+          const e = new Date(customEndDate).getTime();
+          daysCustom = Math.max(1, Math.round(Math.abs(e - s) / (1000 * 60 * 60 * 24)) + 1);
+        }
+
+        return {
+          title: `ภาพรวมการใช้ไฟฟ้า (${rangeText})`,
+          subtitle: `สรุปข้อมูลตามช่วงวันที่กำหนด ${rangeText} (${daysCustom} วัน)`,
+          badgeText: "ช่วงเวลาที่เลือก",
+          card1Label: "ยอดค่าไฟช่วงที่เลือก",
+          card1SubLabel: `${daysCustom} วันที่ระบุ`,
+          card2Label: "หน่วยไฟฟ้ารวมช่วงนี้",
+          card3Label: "เฉลี่ยต่อวัน (ช่วงที่เลือก)",
+          card3SubLabel: `เฉลี่ยตามช่วง ${daysCustom} วัน`,
+          daysForAverage: daysCustom,
+          isProjectionApplicable: false,
+          summaryCardTitle: "สรุปยอดรวมช่วงที่เลือก",
+          summaryCardTag: "ช่วงวันที่ระบุ",
+          summaryHighlightLabel: "ยอดค่าไฟรวมทั้งสิ้น",
+          summaryStatusText: `${rangeText} (${daysCustom} วัน)`,
+          summaryTip: `สรุปข้อมูลการใช้ไฟฟ้าระหว่าง ${rangeText} รวมบันทึก ${filteredLogs.length} รายการ`,
+        };
+      }
+      case "all": {
+        return {
+          title: "ภาพรวมการใช้ไฟฟ้า ทั้งหมดที่บันทึก",
+          subtitle: "สรุปข้อมูลประวัติการใช้ไฟฟ้าทั้งหมดตั้งแต่เริ่มต้นบันทึก",
+          badgeText: "ประวัติทั้งหมด",
+          card1Label: "ยอดค่าไฟสะสมทั้งหมด",
+          card1SubLabel: "รวมทุกช่วงเวลา",
+          card2Label: "หน่วยไฟฟ้ารวมทั้งหมด",
+          card3Label: "เฉลี่ยต่อวัน (ภาพรวม)",
+          card3SubLabel: "เฉลี่ยตลอดช่วงบันทึก",
+          daysForAverage: Math.max(1, currentMonthDaysPassed),
+          isProjectionApplicable: false,
+          summaryCardTitle: "สรุปยอดรวมทั้งหมด",
+          summaryCardTag: "ประวัติทั้งหมด",
+          summaryHighlightLabel: "ยอดค่าไฟรวมสะสมทั้งสิ้น",
+          summaryStatusText: `รวมบันทึกทั้งหมด ${filteredLogs.length} รายการ`,
+          summaryTip: `สถิติภาพรวมจากการบันทึกทั้งหมด ${filteredLogs.length} รายการ`,
+        };
+      }
+      case "this_month":
+      default: {
+        return {
+          title: `ภาพรวมการใช้ไฟฟ้า ${currentMonthName} ${currentThaiYearShort}`,
+          subtitle: "สรุปข้อมูล วิเคราะห์แนวโน้ม และการควบคุมงบประมาณค่าไฟ",
+          badgeText: `รอบ 1-${daysInCurrentMonth} ${thaiShortMonths[curMonth]}`,
+          card1Label: "ค่าไฟสะสมเดือนนี้",
+          card1SubLabel: "สิ้นเดือน: ~฿",
+          card2Label: "หน่วยไฟฟ้าเดือนนี้",
+          card3Label: "เฉลี่ยค่าไฟต่อวัน",
+          card3SubLabel: `เฉลี่ย ${currentMonthDaysPassed} วันที่ผ่านมา`,
+          daysForAverage: currentMonthDaysPassed,
+          isProjectionApplicable: true,
+          summaryCardTitle: "คาดการณ์สิ้นเดือน",
+          summaryCardTag: "รอบปัจจุบัน",
+          summaryHighlightLabel: "ประมาณการค่าไฟทั้งเดือน",
+          summaryStatusText: `ผ่านมา ${currentMonthDaysPassed} วัน • เหลืออีก ${Math.max(0, daysInCurrentMonth - currentMonthDaysPassed)} วัน`,
+          summaryTip: `คำนวณจากพฤติกรรมการใช้ไฟเฉลี่ยหน่วย/วัน คูณจำนวนวันของเดือนนี้ (${daysInCurrentMonth} วัน)`,
+        };
+      }
+    }
+  }, [
+    activeFilter,
+    prevMonthName,
+    prevThaiYearShort,
+    prevLastDay,
+    prevMonthIndex,
+    prevYear,
+    currentMonthName,
+    currentThaiYearShort,
+    daysInCurrentMonth,
+    currentMonthDaysPassed,
+    curMonth,
+    curYear,
+    customStartDate,
+    customEndDate,
+    filteredLogs.length,
+    now,
+  ]);
 
   const hasLogs = logs && logs.length > 0;
   const isFreshCycle = !hasLogs || (summary?.currentMonthUnits === 0 && summary?.currentMonthCost === 0);
@@ -78,15 +260,54 @@ export const VoltPulseDashboard: React.FC<VoltPulseDashboardProps> = ({
   const currentUnits = isFreshCycle ? 0 : (summary?.currentMonthUnits ?? 0);
   const ratePerUnit = user?.Current_Rate_Per_Unit || 8.0;
 
-  // Daily average
-  const now = new Date();
-  const daysPassed = Math.max(1, now.getDate());
-  const dailyAverageUnits = isFreshCycle ? 0 : Number((currentUnits / daysPassed).toFixed(1));
-  const dailyAverageCost = isFreshCycle ? 0 : Number((currentCost / daysPassed).toFixed(1));
+  // Contextual Daily Average
+  const daysForAvg = filterContext.daysForAverage || 1;
+  const dailyAverageUnits = isFreshCycle ? 0 : Number((currentUnits / daysForAvg).toFixed(1));
+  const dailyAverageCost = isFreshCycle ? 0 : Number((currentCost / daysForAvg).toFixed(1));
 
-  // End of month projected cost
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const projectedMonthCost = isFreshCycle ? 0 : Math.round(dailyAverageCost * daysInMonth);
+  // End of month projected cost (only applicable for this_month)
+  const projectedMonthCost = filterContext.isProjectionApplicable
+    ? (isFreshCycle ? 0 : Math.round(dailyAverageCost * daysInCurrentMonth))
+    : currentCost;
+
+  // Smooth Animated Counter Effect (0 -> target value) matching Home page animation
+  const [displayCost, setDisplayCost] = useState<number>(0);
+  const [displayUnits, setDisplayUnits] = useState<number>(0);
+  const [displayDailyCost, setDisplayDailyCost] = useState<number>(0);
+  const [displayProjectedCost, setDisplayProjectedCost] = useState<number>(0);
+
+  useEffect(() => {
+    let startTimestamp: number | null = null;
+    const duration = 1500; // 1.5s smooth easing
+    let animationFrameId: number;
+
+    const easeOutQuart = (x: number): number => {
+      return 1 - Math.pow(1 - x, 4);
+    };
+
+    const step = (timestamp: number) => {
+      if (!startTimestamp) startTimestamp = timestamp;
+      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+      const eased = easeOutQuart(progress);
+
+      setDisplayCost(currentCost * eased);
+      setDisplayUnits(currentUnits * eased);
+      setDisplayDailyCost(dailyAverageCost * eased);
+      setDisplayProjectedCost(projectedMonthCost * eased);
+
+      if (progress < 1) {
+        animationFrameId = requestAnimationFrame(step);
+      } else {
+        setDisplayCost(currentCost);
+        setDisplayUnits(currentUnits);
+        setDisplayDailyCost(dailyAverageCost);
+        setDisplayProjectedCost(projectedMonthCost);
+      }
+    };
+
+    animationFrameId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [currentCost, currentUnits, dailyAverageCost, projectedMonthCost]);
 
   // Month-over-Month comparison
   const percentChange = summary?.unitsPercentChange;
@@ -95,15 +316,19 @@ export const VoltPulseDashboard: React.FC<VoltPulseDashboardProps> = ({
   // Chart view tab: "cost" vs "units"
   const [metricTab, setMetricTab] = useState<"cost" | "units">("cost");
 
-  // Chart data from monthly logs (or fallback 6 months preview)
+  // Chart data from monthly logs (highlight target month)
   const chartDisplayData = useMemo(() => {
-    const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    let targetMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    if (activeFilter === "last_month") {
+      targetMonthKey = `${prevYear}-${String(prevMonthIndex + 1).padStart(2, "0")}`;
+    }
+
     if (monthlyChartData && monthlyChartData.length > 0) {
       return monthlyChartData.map((d) => ({
         month: d.monthName,
         cost: Math.round(d.totalCost),
         units: Number(d.totalUnits.toFixed(1)),
-        isCurrent: d.monthKey === currentMonthKey,
+        isCurrent: d.monthKey === targetMonthKey,
       }));
     }
     // Fallback if empty
@@ -114,13 +339,13 @@ export const VoltPulseDashboard: React.FC<VoltPulseDashboardProps> = ({
       { month: "ส.ค.", cost: 1350, units: 168.7, isCurrent: false },
       { month: "ก.ย.", cost: currentCost || 1248, units: currentUnits || 156, isCurrent: true },
     ];
-  }, [monthlyChartData, currentCost, currentUnits]);
+  }, [monthlyChartData, currentCost, currentUnits, activeFilter, prevYear, prevMonthIndex, now]);
 
   // Projection details
-  const daysRemaining = Math.max(0, daysInMonth - daysPassed);
-  const projectedUnits = isFreshCycle ? 0 : Number((dailyAverageUnits * daysInMonth).toFixed(1));
+  const daysRemaining = Math.max(0, daysInCurrentMonth - currentMonthDaysPassed);
+  const projectedUnits = isFreshCycle ? 0 : Number((dailyAverageUnits * daysInCurrentMonth).toFixed(1));
   const remainingEstimatedCost = Math.max(0, projectedMonthCost - currentCost);
-  const cycleProgressPct = Math.min(100, Math.round((daysPassed / daysInMonth) * 100));
+  const cycleProgressPct = Math.min(100, Math.round((currentMonthDaysPassed / daysInCurrentMonth) * 100));
 
   return (
     <div className="w-full space-y-4 sm:space-y-6 md:space-y-8 select-none font-sans text-slate-800">
@@ -129,23 +354,25 @@ export const VoltPulseDashboard: React.FC<VoltPulseDashboardProps> = ({
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-xl sm:text-2xl md:text-3xl font-light tracking-tight text-slate-900 truncate">
-              ภาพรวมการใช้ไฟฟ้า {currentMonthYearText}
+              {filterContext.title}
             </h1>
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-600 border border-slate-200/60 shrink-0">
+              {filterContext.badgeText}
+            </span>
           </div>
           <p className="text-[11px] sm:text-xs md:text-sm text-slate-400 font-light mt-0.5 leading-relaxed">
-            สรุปข้อมูล วิเคราะห์แนวโน้ม และการควบคุมงบประมาณค่าไฟ
+            {filterContext.subtitle}
           </p>
         </div>
-
       </div>
 
       {/* ================= 2. Primary KPI Cards Grid (4 Cards - 2 cols on mobile) ================= */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-        {/* Card 1: ค่าไฟเดือนนี้ */}
+        {/* Card 1: ค่าไฟ */}
         <div className="bg-white rounded-2xl p-3.5 sm:p-5 border border-slate-100 shadow-[0_2px_12px_rgba(0,0,0,0.02)] flex flex-col justify-between hover:border-slate-200 transition-all min-w-0">
           <div className="flex items-center justify-between mb-1.5 sm:mb-2">
             <span className="text-[10px] sm:text-xs font-light tracking-wide text-slate-400 uppercase truncate">
-              ค่าไฟสะสมเดือนนี้
+              {filterContext.card1Label}
             </span>
             <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-slate-50 flex items-center justify-center text-slate-600 shrink-0">
               <span className="text-xs sm:text-sm font-semibold">฿</span>
@@ -154,21 +381,27 @@ export const VoltPulseDashboard: React.FC<VoltPulseDashboardProps> = ({
           <div>
             <div className="flex items-baseline space-x-0.5 sm:space-x-1 overflow-hidden">
               <span className="text-xl sm:text-2xl md:text-3xl font-[300] tracking-tight text-slate-900 tabular-nums truncate">
-                ฿{currentCost.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })}
+                ฿{displayCost.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })}
               </span>
             </div>
             <div className="mt-1.5 sm:mt-2 text-[10px] sm:text-[11px] text-slate-400 font-light flex flex-wrap items-center gap-1 leading-tight">
-              <span className="shrink-0">สิ้นเดือน:</span>
-              <span className="font-medium text-slate-700 tabular-nums">~฿{projectedMonthCost.toLocaleString()}</span>
+              {filterContext.isProjectionApplicable ? (
+                <>
+                  <span className="shrink-0">สิ้นเดือน:</span>
+                  <span className="font-medium text-slate-700 tabular-nums">~฿{Math.round(displayProjectedCost).toLocaleString()}</span>
+                </>
+              ) : (
+                <span className="font-medium text-slate-600 truncate">{filterContext.card1SubLabel}</span>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Card 2: หน่วยไฟฟ้าสะสม */}
+        {/* Card 2: หน่วยไฟฟ้า */}
         <div className="bg-white rounded-2xl p-3.5 sm:p-5 border border-slate-100 shadow-[0_2px_12px_rgba(0,0,0,0.02)] flex flex-col justify-between hover:border-slate-200 transition-all min-w-0">
           <div className="flex items-center justify-between mb-1.5 sm:mb-2">
             <span className="text-[10px] sm:text-xs font-light tracking-wide text-slate-400 uppercase truncate">
-              หน่วยไฟฟ้าที่ใช้
+              {filterContext.card2Label}
             </span>
             <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
               <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-emerald-500/20" />
@@ -177,13 +410,13 @@ export const VoltPulseDashboard: React.FC<VoltPulseDashboardProps> = ({
           <div>
             <div className="flex items-baseline space-x-1 overflow-hidden">
               <span className="text-xl sm:text-2xl md:text-3xl font-[300] tracking-tight text-slate-900 tabular-nums truncate">
-                {currentUnits.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                {displayUnits.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
               </span>
               <span className="text-[10px] sm:text-xs font-light text-slate-400 shrink-0">kWh</span>
             </div>
-            <div className="mt-1.5 sm:mt-2 text-[10px] sm:text-[11px] text-slate-400 font-light flex flex-wrap items-center gap-1 leading-tight">
-              <span className="shrink-0">เฉลี่ย:</span>
-              <span className="font-medium text-slate-700 tabular-nums">{dailyAverageUnits} หน่วย/วัน</span>
+            <div className="mt-1.5 sm:mt-2 text-[10px] sm:text-[11px] text-slate-400 font-light flex items-center space-x-1 leading-tight truncate">
+              <span>อัตรา:</span>
+              <span className="font-medium text-slate-700 tabular-nums">฿{ratePerUnit.toFixed(2)}/หน่วย</span>
             </div>
           </div>
         </div>
@@ -192,7 +425,7 @@ export const VoltPulseDashboard: React.FC<VoltPulseDashboardProps> = ({
         <div className="bg-white rounded-2xl p-3.5 sm:p-5 border border-slate-100 shadow-[0_2px_12px_rgba(0,0,0,0.02)] flex flex-col justify-between hover:border-slate-200 transition-all min-w-0">
           <div className="flex items-center justify-between mb-1.5 sm:mb-2">
             <span className="text-[10px] sm:text-xs font-light tracking-wide text-slate-400 uppercase truncate">
-              เฉลี่ยค่าไฟต่อวัน
+              {filterContext.card3Label}
             </span>
             <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-sky-50 flex items-center justify-center text-sky-600 shrink-0">
               <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
@@ -201,22 +434,21 @@ export const VoltPulseDashboard: React.FC<VoltPulseDashboardProps> = ({
           <div>
             <div className="flex items-baseline space-x-0.5 sm:space-x-1 overflow-hidden">
               <span className="text-xl sm:text-2xl md:text-3xl font-[300] tracking-tight text-slate-900 tabular-nums truncate">
-                ฿{dailyAverageCost.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                ฿{displayDailyCost.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
               </span>
               <span className="text-[10px] sm:text-xs font-light text-slate-400 shrink-0">/วัน</span>
             </div>
-            <div className="mt-1.5 sm:mt-2 text-[10px] sm:text-[11px] text-slate-400 font-light flex flex-wrap items-center gap-1 leading-tight">
-              <span className="shrink-0">คิดเป็น:</span>
-              <span className="font-medium text-slate-700 tabular-nums truncate">~{dailyAverageUnits} kWh/วัน</span>
+            <div className="mt-1.5 sm:mt-2 text-[10px] sm:text-[11px] text-slate-400 font-light truncate leading-tight">
+              {filterContext.card3SubLabel}
             </div>
           </div>
         </div>
 
-        {/* Card 4: เทียบเดือนก่อนหน้า */}
+        {/* Card 4: เทียบช่วงก่อนหน้า */}
         <div className="bg-white rounded-2xl p-3.5 sm:p-5 border border-slate-100 shadow-[0_2px_12px_rgba(0,0,0,0.02)] flex flex-col justify-between hover:border-slate-200 transition-all min-w-0">
           <div className="flex items-center justify-between mb-1.5 sm:mb-2">
             <span className="text-[10px] sm:text-xs font-light tracking-wide text-slate-400 uppercase truncate">
-              เทียบเดือนก่อน
+              {summary?.prevPeriodLabel ? summary.prevPeriodLabel : "เทียบรอบก่อน"}
             </span>
             <div
               className={`w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 ${
@@ -260,44 +492,62 @@ export const VoltPulseDashboard: React.FC<VoltPulseDashboardProps> = ({
       </div>
 
       {/* ================= 3. Main Chart & Split Breakdown ================= */}
-      {/* On mobile: Forecast Card is FIRST (order-1), Chart is SECOND (order-2) */}
+      {/* On mobile: Forecast/Summary Card is FIRST (order-1), Chart is SECOND (order-2) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-        {/* Right on desktop, Top on mobile: คาดการณ์ค่าไฟสิ้นเดือน (Monthly Cost Projection) */}
+        {/* Right on desktop, Top on mobile: คาดการณ์ หรือ สรุปยอดรวมตามช่วงเวลา */}
         <div className="order-1 lg:order-2 bg-white rounded-2xl p-4 sm:p-6 border border-slate-100 shadow-[0_2px_12px_rgba(0,0,0,0.02)] flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-3 sm:mb-4">
-              <h2 className="text-sm sm:text-base font-medium text-slate-800">คาดการณ์สิ้นเดือน</h2>
-              <span className="text-[10px] sm:text-[11px] text-slate-400 font-light">รอบปัจจุบัน</span>
+              <h2 className="text-sm sm:text-base font-medium text-slate-800">
+                {filterContext.summaryCardTitle}
+              </h2>
+              <span className="text-[10px] sm:text-[11px] text-slate-400 font-light">
+                {filterContext.summaryCardTag}
+              </span>
             </div>
 
-            {/* Dominant Highlight Forecast Number */}
+            {/* Dominant Highlight Number */}
             <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100/60 border border-slate-100/80 mb-4 sm:mb-5">
               <span className="text-[10px] sm:text-[11px] uppercase tracking-wider text-slate-400 font-light block mb-1">
-                ประมาณการค่าไฟทั้งเดือน
+                {filterContext.summaryHighlightLabel}
               </span>
               <div className="flex items-baseline space-x-1">
                 <span className="text-lg sm:text-xl font-light text-slate-400">฿</span>
                 <span className="text-3xl sm:text-4xl md:text-5xl font-[300] tracking-tight text-slate-900 tabular-nums">
-                  {projectedMonthCost.toLocaleString()}
+                  {Math.round(filterContext.isProjectionApplicable ? displayProjectedCost : displayCost).toLocaleString()}
                 </span>
                 <span className="text-xs text-slate-400 font-light ml-1">บาท</span>
               </div>
               <div className="mt-1.5 sm:mt-2 text-[11px] text-slate-500 font-light flex items-center justify-between">
-                <span>ประมาณการหน่วย:</span>
-                <span className="font-medium text-slate-700 tabular-nums">~{projectedUnits.toLocaleString()} kWh</span>
+                <span>{filterContext.isProjectionApplicable ? "ประมาณการหน่วย:" : "จำนวนหน่วยรวม:"}</span>
+                <span className="font-medium text-slate-700 tabular-nums">
+                  ~{(filterContext.isProjectionApplicable ? projectedUnits : displayUnits).toLocaleString(undefined, {
+                    minimumFractionDigits: 1,
+                    maximumFractionDigits: 1,
+                  })} kWh
+                </span>
               </div>
             </div>
 
-            {/* Billing Cycle Timeline & Progress Bar */}
+            {/* Timeline & Progress Bar */}
             <div className="space-y-1.5 mb-4 sm:mb-5">
               <div className="flex justify-between text-[11px] sm:text-xs text-slate-500 font-light">
-                <span>ผ่านมา {daysPassed} วัน</span>
-                <span>เหลืออีก {daysRemaining} วัน</span>
+                {filterContext.isProjectionApplicable ? (
+                  <>
+                    <span>ผ่านมา {currentMonthDaysPassed} วัน</span>
+                    <span>เหลืออีก {daysRemaining} วัน</span>
+                  </>
+                ) : (
+                  <>
+                    <span>{filterContext.summaryStatusText}</span>
+                    <span className="text-emerald-600 font-medium">สมบูรณ์</span>
+                  </>
+                )}
               </div>
               <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden flex">
                 <div
                   className="bg-emerald-500 h-full rounded-full transition-all duration-500"
-                  style={{ width: `${cycleProgressPct}%` }}
+                  style={{ width: `${filterContext.isProjectionApplicable ? cycleProgressPct : 100}%` }}
                 />
               </div>
             </div>
@@ -305,23 +555,37 @@ export const VoltPulseDashboard: React.FC<VoltPulseDashboardProps> = ({
             {/* Comparison Metrics Breakdown */}
             <div className="space-y-2 pt-1 border-t border-slate-100/80 text-[11px] sm:text-xs">
               <div className="flex items-center justify-between">
-                <span className="text-slate-500 font-light">ใช้ไปแล้วปัจจุบัน:</span>
+                <span className="text-slate-500 font-light">
+                  {filterContext.isProjectionApplicable ? "ใช้ไปแล้วปัจจุบัน:" : "ยอดค่าไฟสุทธิ:"}
+                </span>
                 <span className="font-medium text-slate-800 tabular-nums">
-                  ฿{currentCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  ฿{displayCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               </div>
+              {filterContext.isProjectionApplicable && (
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 font-light">คาดว่าจะเพิ่มอีกประมาณ:</span>
+                  <span className="font-medium text-slate-800 tabular-nums">
+                    +฿{remainingEstimatedCost.toLocaleString()}
+                  </span>
+                </div>
+              )}
               <div className="flex items-center justify-between">
-                <span className="text-slate-500 font-light">คาดว่าจะเพิ่มอีกประมาณ:</span>
-                <span className="font-medium text-slate-800 tabular-nums">
-                  +฿{remainingEstimatedCost.toLocaleString()}
+                <span className="text-slate-500 font-light">
+                  {filterContext.isProjectionApplicable ? "อัตราเฉลี่ยที่ใช้ประเมิน:" : "อัตราเฉลี่ยต่อวัน:"}
                 </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-500 font-light">อัตราเฉลี่ยที่ใช้ประเมิน:</span>
                 <span className="font-medium text-slate-700 tabular-nums">
                   ฿{dailyAverageCost.toFixed(1)} /วัน
                 </span>
               </div>
+              {!filterContext.isProjectionApplicable && (
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 font-light">อัตราค่าไฟที่ใช้คำนวณ:</span>
+                  <span className="font-medium text-slate-700 tabular-nums">
+                    ฿{ratePerUnit.toFixed(2)} /หน่วย
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -329,7 +593,7 @@ export const VoltPulseDashboard: React.FC<VoltPulseDashboardProps> = ({
           <div className="mt-4 sm:mt-5 p-3 rounded-xl bg-slate-50/80 border border-slate-100 flex items-start gap-2.5">
             <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600 shrink-0 mt-0.5" />
             <div className="text-[10px] sm:text-[11px] text-slate-600 font-light leading-relaxed">
-              คำนวณจากพฤติกรรมการใช้ไฟเฉลี่ย {dailyAverageUnits} หน่วย/วัน คูณจำนวนวันของเดือนนี้ ({daysInMonth} วัน)
+              {filterContext.summaryTip}
             </div>
           </div>
         </div>
@@ -458,28 +722,6 @@ export const VoltPulseDashboard: React.FC<VoltPulseDashboardProps> = ({
               รายการอ่านเลขมิเตอร์ 3 ครั้งล่าสุด
             </p>
           </div>
-          <div className="flex items-center gap-1.5 shrink-0 ml-2">
-            {onOpenHistory && (
-              <button
-                onClick={onOpenHistory}
-                aria-label="ดูประวัติและสถิติทั้งหมด"
-                title="ดูประวัติและสถิติทั้งหมด"
-                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-800 hover:bg-slate-100 transition-all active:scale-95 cursor-pointer flex items-center justify-center"
-              >
-                <Clock className="w-4 h-4 stroke-[1.8]" />
-              </button>
-            )}
-            {onOpenAddModal && (
-              <button
-                onClick={onOpenAddModal}
-                aria-label="เพิ่มรายการจดมิเตอร์"
-                title="เพิ่มรายการจดมิเตอร์"
-                className="p-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white shadow-xs transition-all active:scale-95 cursor-pointer flex items-center justify-center"
-              >
-                <Plus className="w-4 h-4 stroke-[2]" />
-              </button>
-            )}
-          </div>
         </div>
 
         {logs && logs.length > 0 ? (
@@ -513,6 +755,13 @@ export const VoltPulseDashboard: React.FC<VoltPulseDashboardProps> = ({
           </div>
         )}
       </div>
+
+      {/* ================= 5. ประวัติบันทึกการใช้ไฟฟ้า (History & Logs) ================= */}
+      {historyTableSlot && (
+        <div className="w-full animate-in fade-in duration-300">
+          {historyTableSlot}
+        </div>
+      )}
     </div>
   );
 };

@@ -33,6 +33,7 @@ interface HeaderProps {
   isLoading: boolean;
   activeNavTab?: NavTabType;
   onSelectNavTab?: (tab: NavTabType) => void;
+  cycleText?: string;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -45,6 +46,7 @@ export const Header: React.FC<HeaderProps> = ({
   isLoading,
   activeNavTab = "dashboard",
   onSelectNavTab,
+  cycleText,
 }) => {
   const { session, logout, isAuthenticated } = useGoogleAuth();
   const { isInstalled, installApp } = usePwa();
@@ -123,7 +125,7 @@ export const Header: React.FC<HeaderProps> = ({
           data-purpose="cycle-indicator"
         >
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-          <span>{billCycleText}</span>
+          <span>{cycleText || billCycleText}</span>
         </div>
 
         {/* ================= Right: User Profile Avatar with Exact Match Dropdown ================= */}

@@ -186,7 +186,9 @@ export async function POST(req: NextRequest) {
       if (gasRes?.success && Array.isArray(gasRes.logs)) {
         isGasConnected = true;
         updatedLogs = syncMeterLogsFromGas(userId, gasRes.logs);
-        const match = updatedLogs.find((l) => l.Record_Date === body.Record_Date);
+        const match = updatedLogs.find(
+          (l) => l.Record_Date === body.Record_Date && Number(l.Meter_Reading) === Number(body.Meter_Reading)
+        );
         if (match) created = match;
       }
     } catch (err) {
